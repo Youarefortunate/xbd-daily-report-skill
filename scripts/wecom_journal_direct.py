@@ -184,7 +184,7 @@ class WeComJournalSender:
 if __name__ == "__main__":
     # 配置数据
     example_data = {
-        "date": "2026年04月16日", # 16号
+        "date": "2026年04月17日", # 17号
         "mngreporters": ["1688858256245493", "1688858005714619", "1688857251600180"],
         "form_id": "AEoAdAfTAA8AZIAWgZUAEUCNAMTNLUG6j_base", # 尝试使用原 ID
         "type": 8, # 仍先尝试 8

@@ -1,7 +1,7 @@
 import os
 import json
 from openai import OpenAI
-from utils.logger import log
+from logger import log
 
 
 class AIProcessor:

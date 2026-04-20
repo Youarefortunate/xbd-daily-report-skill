@@ -1,7 +1,7 @@
 import os
 import asyncio
 from dotenv import load_dotenv
-from utils.logger import log
+from logger import log
 
 
 def load_repo_configs():

@@ -5,7 +5,7 @@ import subprocess
 import winreg
 import ctypes
 from pathlib import Path
-from utils.logger import log
+from logger import log
 
 # --- 1. 基础配置 ---
 TASK_NAME = "DailyBot_Miao"

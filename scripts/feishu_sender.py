@@ -1,7 +1,7 @@
 import os
 import json
 import lark_oapi as lark
-from utils.logger import log
+from logger import log
 
 
 class FeishuSender:

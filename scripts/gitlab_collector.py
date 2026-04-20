@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 import urllib.parse
 import requests
 import os
-from utils.logger import log
+from logger import log
 
 
 class GitLabCollector:

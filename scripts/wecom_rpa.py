@@ -2,7 +2,7 @@ import asyncio
 import os
 import random
 from playwright.async_api import async_playwright, Page
-from utils.logger import log
+from logger import log
 
 
 class WeComRPA:

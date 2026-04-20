@@ -27,8 +27,7 @@ scripts/
 ├── .env                   # 本地环境变量配置文件 (含 API Key、Token 等)。
 ├── requirements.txt       # 模块依赖清单。
 ├── extra_report.txt       # [手动指定新增] 增补报告临时存储文件。
-├── utils/                 # 通用工具库
-│   └── logger.py          # 统一日志格式化组件。
+├── logger.py              # 统一日志格式化组件。
 └── logs/                  # [自动生成] 运行日志存放目录。
 ```
 

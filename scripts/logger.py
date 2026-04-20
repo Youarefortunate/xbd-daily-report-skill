@@ -6,8 +6,8 @@ from datetime import datetime
 def setup_logger():
     """配置全局日志系统，复刻主项目规范"""
     # 获取脚本所在目录，确保 logs 文件夹在 scripts 目录下
-    scripts_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    log_dir = os.path.join(scripts_dir, "logs")
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    log_dir = os.path.join(current_dir, "logs")
     
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
