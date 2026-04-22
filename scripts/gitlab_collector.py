@@ -1,8 +1,11 @@
 from datetime import datetime, timezone, timedelta
+from typing import List
 import urllib.parse
 import requests
 import os
 from logger import log
+from camouflage import CamouflageItem, camouflage_history_manager
+import random
 
 
 class GitLabCollector:
@@ -16,6 +19,52 @@ class GitLabCollector:
         self.token = token or os.getenv("GITLAB_TOKEN", "")
         self.author = author or os.getenv("GITLAB_AUTHOR", "")
         self.headers = {"PRIVATE-TOKEN": self.token}
+        # 无意义提交的关键词/前缀过滤列表
+        self.ignore_prefixes = [
+            "merge branch",
+            "merge remote-tracking branch",
+            "merge tag",
+            "revert \"",
+        ]
+        self.ignore_messages = [
+            "chore: chore",
+            "fix: bug",
+            "update",
+            "lint",
+            "fmt",
+            "fix",
+            "chore",
+            "...",
+            "test",
+        ]
+
+    def _is_meaningless_commit(self, title: str) -> bool:
+        """
+        检查提交标题是否毫无意义
+        """
+        if not title:
+            return True
+        
+        t_lower = title.strip().lower()
+        
+        # 1. 过滤合并提交
+        for prefix in self.ignore_prefixes:
+            if t_lower.startswith(prefix):
+                return True
+        
+        # 2. 过滤完全匹配的无意义词汇
+        if t_lower in self.ignore_messages:
+            return True
+        
+        # 3. 过滤过长的重复字符或者单纯的标点符号
+        if len(set(t_lower)) <= 2 and len(t_lower) > 2:
+             return True
+             
+        # 4. 过滤过短的提交 (例如 "a", "fix")
+        if len(t_lower.replace(" ", "")) < 4 and ":" not in t_lower:
+            return True
+            
+        return False
 
     def _get_all_branches(self, project_path: str) -> list:
         """获取项目的所有分支名"""
@@ -63,6 +112,11 @@ class GitLabCollector:
                             and a_lower not in c.get("author_email", "").lower()
                         ):
                             continue
+                    
+                    # [新增] 无意义提交过滤
+                    if self._is_meaningless_commit(c.get("title", "")):
+                        continue
+                        
                     branch_commits.append(c)
 
                 if len(data) < 100:
@@ -142,6 +196,7 @@ class GitLabCollector:
                     if key not in all_commits_map:
                         all_commits_map[key] = {
                             "id": c["id"][:8],
+                            "full_id": c["id"],
                             "title": c["title"],
                             "date": c["created_at"],
                             "author": c["author_name"],
@@ -155,3 +210,76 @@ class GitLabCollector:
         final_list.sort(key=lambda x: x["date"], reverse=True)
         print(f"\n✅ 采集完成! 共发现 {len(final_list)} 条唯一提交记录。")
         return final_list
+
+    def generate_camouflage_data(
+        self,
+        repo_configs: list,
+        needed_count: int,
+        lookback_days: int = 14,
+        cooldown_days: int = 10,
+    ) -> List[CamouflageItem]:
+        """
+        利用历史记录生成指定数量的伪装素材记录。
+        """
+        log.info(f"🎭 [伪装] 正在尝试从历史记录中生成 {needed_count} 条素材...")
+
+        now = datetime.now(self.TZ_CHINESE)
+        # 默认排除掉今天的数据，从昨天开始回溯
+        until_dt = now.replace(
+            hour=23, minute=59, second=59, microsecond=0
+        ) - timedelta(days=1)
+        since_dt = until_dt - timedelta(days=lookback_days)
+
+        since_str = since_dt.isoformat()
+        until_str = until_dt.isoformat()
+
+        all_candidates = []
+        seen_ids = set()
+
+        for repo in repo_configs:
+            path = repo["path"]
+            repo_name = repo.get("name", path)
+            target_branches = repo.get("branches", [])
+            if not target_branches:
+                target_branches = self._get_all_branches(path)
+
+            for branch in target_branches:
+                commits = self._fetch_commits_by_branch(path, branch, since_str, until_str)
+                for c in commits:
+                    activity_id = c["id"]
+                    if activity_id in seen_ids:
+                        continue
+
+                    # 冷却检查
+                    if camouflage_history_manager.is_in_cooldown(activity_id, cooldown_days):
+                        continue
+
+                    seen_ids.add(activity_id)
+                    
+                    # 格式化日期
+                    item_date = c.get("created_at", "")[:10]
+                    
+                    camou_item = (
+                        CamouflageItem.builder()
+                        .set_id(activity_id)
+                        .set_source(repo_name)
+                        .set_repo_path(path)
+                        .set_content(c["title"])
+                        .set_platform("GitLab")
+                        .set_author(c.get("author_name"))
+                        .set_date(item_date)
+                        .set_created_at(c.get("created_at"))
+                        .build()
+                    )
+                    all_candidates.append(camou_item)
+
+        if not all_candidates:
+            log.warning("⚠️ [伪装] 未找到任何可用的历史素材。")
+            return []
+
+        # 随机抽取所需数量
+        random.shuffle(all_candidates)
+        selected = all_candidates[:needed_count]
+
+        log.info(f"✅ [伪装] 已成功提取 {len(selected)} 条历史素材。")
+        return selected

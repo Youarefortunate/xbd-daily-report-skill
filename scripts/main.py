@@ -1,7 +1,9 @@
 import os
+import json
 import asyncio
 from dotenv import load_dotenv
 from logger import log
+from camouflage import camouflage_history_manager
 
 
 def load_repo_configs():
@@ -30,50 +32,54 @@ def load_repo_configs():
     return configs
 
 
-def print_raw_commits(commits):
+def print_raw_commits(commits, fake_items=None):
     """按项目分组打印原始采集到的素材预览 (深度复刻 04-07 风格)"""
-    if not commits:
+    if not commits and not fake_items:
         return
 
-    # 1. 执行分组逻辑
-    # { "project_path": { "date": [ {title, time, branch} ] } }
-    grouped = {}
-    for c in commits:
-        p = c.get("project", "未知项目")
-        # 尝试提取别名
-        p_name = c.get("project_name", "")
-        p_display = f"{p} ({p_name})" if p_name else p
-
-        d_key = c.get("date", "未知日期")[:10]
-        if p_display not in grouped:
-            grouped[p_display] = {}
-        if d_key not in grouped[p_display]:
-            grouped[p_display][d_key] = []
-
-        # 提取时间 [HH:MM]
-        time_str = "00:00"
-        try:
-            from datetime import datetime
-            dt = datetime.fromisoformat(c.get("date", "").replace("Z", "+00:00"))
-            time_str = dt.strftime("%H:%M")
-        except:
-            pass
-
-        grouped[p_display][d_key].append(
-            {"title": c.get("title", ""), "time": time_str, "branch": c.get("branch", "unknown")}
-        )
-
-    # 2. 打印美化后的输出 (2/4/6/8 级联缩进)
     log.info("")
     log.info("  平台: GITLAB")
-    log.info("    📦 [今日真实工作]")
+    
+    # 1. 打印今日真实工作
+    if commits:
+        grouped_real = {}
+        for c in commits:
+            p = c.get("project", "未知项目")
+            p_name = c.get("project_name", "")
+            p_display = f"{p} ({p_name})" if p_name else p
+            d_key = c.get("date", "未知日期")[:10]
+            grouped_real.setdefault(p_display, {}).setdefault(d_key, []).append(c)
 
-    for p_display, dates in grouped.items():
-        log.info(f"    数据源: {p_display}")
-        for d_key in sorted(dates.keys(), reverse=True):
-            log.info(f"      📅 日期: {d_key}")
-            for item in dates[d_key]:
-                log.info(f"        - [{item['time']}]({item['branch']}) {item['title']}")
+        log.info("    📦 [今日真实工作]")
+        for p_display, dates in grouped_real.items():
+            log.info(f"    数据源: {p_display}")
+            for d_key in sorted(dates.keys(), reverse=True):
+                log.info(f"      📅 日期: {d_key}")
+                for c in dates[d_key]:
+                    # 提取时间
+                    time_str = "00:00"
+                    try:
+                        from datetime import datetime
+                        dt = datetime.fromisoformat(c.get("date", "").replace("Z", "+00:00"))
+                        time_str = dt.strftime("%H:%M")
+                    except: pass
+                    log.info(f"        - [{time_str}]({c.get('branch', 'unknown')}) {c.get('title', '')}")
+
+    # 2. 打印待伪装素材
+    if fake_items:
+        grouped_fake = {}
+        for item in fake_items:
+            p_display = f"{item.source} ({item.repo_path})"
+            d_key = item.date or "未知日期"
+            grouped_fake.setdefault(p_display, {}).setdefault(d_key, []).append(item)
+
+        log.info("    🎭 [待伪装素材 - GITLAB]")
+        for p_display, dates in grouped_fake.items():
+            log.info(f"      数据源: {p_display}")
+            for d_key in sorted(dates.keys(), reverse=True):
+                log.info(f"        📅 日期: {d_key}")
+                for item in dates[d_key]:
+                    log.info(f"          - {item.content}")
     log.info("")
 
 
@@ -122,13 +128,27 @@ async def run_daily_bot():
     repo_configs = load_repo_configs()
     collector = GitLabCollector()
     commits = collector.run(repo_configs)
-    print_raw_commits(commits)
+    
+    # [伪装技能] 检查是否需要补全素材
+    fake_items = []
+    # 阈值配置（可以后续移至 .env）
+    threshold = int(os.getenv("CAMOUFLAGE_THRESHOLD", "3"))
+    if len(commits) < threshold:
+        needed = threshold - len(commits)
+        fake_items = collector.generate_camouflage_data(
+            repo_configs, 
+            needed_count=needed,
+            lookback_days=int(os.getenv("CAMOUFLAGE_LOOKBACK", "14")),
+            cooldown_days=int(os.getenv("CAMOUFLAGE_COOLDOWN", "10"))
+        )
+
+    print_raw_commits(commits, fake_items=fake_items)
 
     # 2. AI 润色处理
     from ai_processor import AIProcessor
 
     processor = AIProcessor()
-    report_items = processor.process(commits, extra_path, prompt_path)
+    report_items = await processor.process(commits, extra_path, prompt_path, fake_items=fake_items)
 
     if not report_items:
         log.warning("⚠️ 提示: 没有生成任何日报条目，终止后续流程。")
@@ -146,20 +166,35 @@ async def run_daily_bot():
     ):
         log.info("\n🚀 正在推送精致日报卡片至飞书...")
         card = feishu.build_daily_report_card(report_items)
-        feishu.send(card)
+        if feishu.send(card):
+            # 只有发送成功才更新伪装素材使用记录
+            if fake_items:
+                log.info(f"💾 [伪装] 任务成功，正在为 {len(fake_items)} 个素材更新记录...")
+                # 将整个 AI 润色结果作为变体参考记录
+                variant = json.dumps(report_items, ensure_ascii=False)
+                for item in fake_items:
+                    camouflage_history_manager.update_usage(item, variant)
 
     # 4. 企业微信 RPA 填报
-    from wecom_rpa import WeComRPA
+    if os.getenv("GITHUB_ACTIONS") == "true":
+        log.info("\nℹ️ 提示: 检测到 GitHub Actions 环境，自动跳过需要人工干预的 RPA 填报。")
+        return
 
+    from wecom_rpa import WeComRPA
     rpa = WeComRPA()
     if rpa.form_url:
         log.info("\n🚀 正在启动企业微信 RPA 自动填报...")
+        # 从环境变量读取 HEADLESS 配置，默认 False（本地有头），CI 环境下通常为 True
+        is_headless = os.getenv("HEADLESS", "false").lower() == "true"
         try:
-            await rpa.init_browser(headless=False)
+            await rpa.init_browser(headless=is_headless)
             if await rpa.handle_login():
                 await rpa.fill_all(report_items)
-                log.info("⏳ 填报完成，浏览器将保持开启 5 分钟以便人工核对。")
-                await asyncio.sleep(300)
+                if not is_headless:
+                    log.info("⏳ 填报完成，浏览器将保持开启 5 分钟以便人工核对。")
+                    await asyncio.sleep(300)
+                else:
+                    log.info("✨ 无头模式填报完成，直接退出。")
         except Exception as e:
             log.error(f"❌ RPA 填报环节发生异常: {e}")
         finally:

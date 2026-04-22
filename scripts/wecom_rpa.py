@@ -10,9 +10,9 @@ class WeComRPA:
 
     def __init__(self, form_url: str = None, user_data_dir: str = None):
         self.form_url = form_url or os.getenv("WECOM_FORM_URL", "")
-        # 默认使用相对路径或环境配置
+        # 默认使用脚本同级目录下的隐藏文件夹，避免污染根目录
         default_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "../.browser_profiles/wecom"
+            os.path.dirname(os.path.abspath(__file__)), ".browser_profiles/wecom"
         )
         self.user_data_dir = user_data_dir or os.getenv(
             "WECOM_USER_DATA_DIR", default_dir
@@ -48,7 +48,13 @@ class WeComRPA:
 
     async def init_browser(self, headless: bool = True):
         """初始化持久化浏览器环境"""
-        log.info("🌐 [RPA] 正在初始化浏览器引擎...")
+        # 在 GitHub Actions 环境下强制开启无头模式，并根据环境调整参数
+        is_ci = os.getenv("GITHUB_ACTIONS") == "true"
+        if is_ci:
+            log.info("🚀 [RPA] 检测到 GitHub Actions 环境，强制启用无头模式。")
+            headless = True
+
+        log.info(f"🌐 [RPA] 正在初始化浏览器引擎 (Headless={headless})...")
         self.playwright = await async_playwright().start()
         # 确保目录存在
         os.makedirs(self.user_data_dir, exist_ok=True)
@@ -56,27 +62,51 @@ class WeComRPA:
         launch_params = {
             "user_data_dir": self.user_data_dir,
             "headless": headless,
-            "args": ["--disable-blink-features=AutomationControlled"],
+            "args": [
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+            ],
             "viewport": {"width": 1280, "height": 800},
         }
 
-        # 优先使用本地物理路径
-        exec_path = await self._get_executable_path()
+        # CI 环境直接使用 Playwright 默认渠道，避免在 Ubuntu 上寻找 Windows 路径
+        exec_path = None if is_ci else await self._get_executable_path()
         if exec_path:
             launch_params["executable_path"] = exec_path
         else:
-            log.info("ℹ️ 未发现本地 Chrome，将回退使用 Playwright 默认渠道...")
+            log.info("ℹ️ 未发现本地 Chrome 或处于 CI 环境，将使用 Playwright 默认渠道...")
             launch_params["channel"] = "chrome"
 
         self.browser_context = await self.playwright.chromium.launch_persistent_context(
             **launch_params
         )
+        
+        # [GitHub Action 适配] 尝试从环境变量注入 Cookies
+        await self._inject_cookies_if_needed()
+
         self.page = await self.browser_context.new_page()
         # 注入反检测脚本
         await self.page.add_init_script(
             "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
         )
         log.info("✅ [RPA] 浏览器启动成功。")
+
+    async def _inject_cookies_if_needed(self):
+        """支持从环境变量 WECOM_COOKIES_JSON 注入会话信息"""
+        cookies_json = os.getenv("WECOM_COOKIES_JSON")
+        if not cookies_json:
+            return
+            
+        try:
+            import json
+            cookies = json.loads(cookies_json)
+            if isinstance(cookies, list):
+                log.info(f"🍪 [RPA] 检测到环境变量中的 Cookies，正在注入 {len(cookies)} 个会话片段...")
+                await self.browser_context.add_cookies(cookies)
+                log.info("✅ Cookies 注入完成。")
+        except Exception as e:
+            log.warning(f"⚠️ [RPA] Cookies 注入失败: {e}")
 
     async def handle_login(self) -> bool:
         """登录检测逻辑"""

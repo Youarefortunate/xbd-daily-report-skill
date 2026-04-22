@@ -37,6 +37,8 @@ scripts/extra_report.txt
 
 # Browser Automation
 scripts/.playwright-cli/
+scripts/.browser_profiles/
+.browser_profiles/
 
 # Editor & System
 .vscode/
