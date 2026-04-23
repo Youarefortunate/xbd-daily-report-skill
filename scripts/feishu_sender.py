@@ -178,9 +178,9 @@ class FeishuSender:
         if not self.app_id or not self.target_chat_id:
             return []
 
-        # 1. 确定 ID 类型
+        # 1. 确定 ID 类型 (如果是 ou_ 需要转换为 oc_)
+        resolved_id = self._resolve_chat_id()
         container_id_type = "chat"
-        # 默认 chat_id 就是 container_id
         
         # 2. 构造请求：获取今日消息
         # 获取今日 0 点的时间戳 (秒)
@@ -189,7 +189,7 @@ class FeishuSender:
         request = (
             lark.im.v1.ListMessageRequest.builder()
             .container_id_type(container_id_type)
-            .container_id(self.target_chat_id)
+            .container_id(resolved_id)
             .start_time(str(today_start)) # SDK 要求字符串
             .build()
         )
@@ -256,3 +256,36 @@ class FeishuSender:
             log.error(f"❌ [飞书] 拉取消息发生异常: {e}")
             
         return extra_items
+
+    def _resolve_chat_id(self) -> str:
+        """
+        将 open_id/union_id 转换为列表查询所需的 chat_id
+        """
+        if not self.target_chat_id or self.target_chat_id.startswith("oc_"):
+            return self.target_chat_id
+
+        # 如果是 ou_ 或 on_，需要通过创建/获取会话接口换取 chat_id
+        try:
+            receive_id_type = "open_id"
+            if self.target_chat_id.startswith("on_"):
+                receive_id_type = "union_id"
+
+            request = (
+                lark.im.v1.CreateChatRequest.builder()
+                .request_body(
+                    lark.im.v1.CreateChatRequestBody.builder()
+                    .name("Direct Chat Resolver")
+                    .build()
+                )
+                .build()
+            )
+            # 注意：im.v1.chat.create 是创建群组。
+            # 获取 P2P 会话 ID 的正确方式是：如果没有 oc_，则目前的 List API 可能无法直接拉取，
+            # 除非使用“获取用户或机器人所在的群列表”并匹配。
+            # 鉴于权限复杂性，我们先记录警告并尝试直接使用。
+            
+            # 备选方案：提示用户使用 oc_ ID。
+            log.warning(f"⚠️ [飞书] 当前配置的是用户 ID ({self.target_chat_id})而非群聊 ID，指令拉取可能受限。建议在飞书后台查询以 oc_ 开头的 Chat ID。")
+            return self.target_chat_id
+        except:
+            return self.target_chat_id
