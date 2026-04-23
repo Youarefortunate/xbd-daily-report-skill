@@ -8,8 +8,11 @@ from logger import log
 class WeComRPA:
     """企业微信自动化填报类"""
 
-    def __init__(self, form_url: str = None, user_data_dir: str = None):
+    def __init__(
+        self, form_url: str = None, user_data_dir: str = None, feishu_sender=None
+    ):
         self.form_url = form_url or os.getenv("WECOM_FORM_URL", "")
+        self.feishu_sender = feishu_sender
         # 默认使用脚本同级目录下的隐藏文件夹，避免污染根目录
         default_dir = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), ".browser_profiles/wecom"
@@ -29,9 +32,24 @@ class WeComRPA:
         self.page = None
         self.playwright = None
 
-    async def _human_sleep(self, base: float = 1.0):
-        """模拟人类随机停顿"""
-        await asyncio.sleep(base + random.uniform(0.5, 1.5))
+        # 模拟运行速度 (0.1~1.0, 越小越快, 默认 0.6)
+        self.speed_val = float(os.getenv("WECOM_RPA_SPEED", "0.6"))
+        # 登录超时时间
+        self.login_timeout = int(os.getenv("WECOM_LOGIN_TIMEOUT", "60"))
+
+    async def _human_sleep(self, base_delay: float = 1.0):
+        """
+        模拟真人随机延迟
+        :param base_delay: 基础延迟时间(秒)
+        """
+        # 使用数值倍率进行调整
+        delay = base_delay * self.speed_val
+        # 增加 20% - 70% 的随机扰动，使动作间隔不固定
+        jitter = delay * random.uniform(0.2, 0.7)
+        total_delay = delay + jitter
+
+        # log.debug(f"[RPA] 模拟延迟: {total_delay:.2f}s") # 生产模式下可静默
+        await asyncio.sleep(total_delay)
 
     async def _get_executable_path(self) -> str:
         """寻找本地安装的 Chrome 路径 (Windows)"""
@@ -75,13 +93,15 @@ class WeComRPA:
         if exec_path:
             launch_params["executable_path"] = exec_path
         else:
-            log.info("ℹ️ 未发现本地 Chrome 或处于 CI 环境，将使用 Playwright 默认渠道...")
+            log.info(
+                "ℹ️ 未发现本地 Chrome 或处于 CI 环境，将使用 Playwright 默认渠道..."
+            )
             launch_params["channel"] = "chrome"
 
         self.browser_context = await self.playwright.chromium.launch_persistent_context(
             **launch_params
         )
-        
+
         # [GitHub Action 适配] 尝试从环境变量注入 Cookies
         await self._inject_cookies_if_needed()
 
@@ -97,12 +117,15 @@ class WeComRPA:
         cookies_json = os.getenv("WECOM_COOKIES_JSON")
         if not cookies_json:
             return
-            
+
         try:
             import json
+
             cookies = json.loads(cookies_json)
             if isinstance(cookies, list):
-                log.info(f"🍪 [RPA] 检测到环境变量中的 Cookies，正在注入 {len(cookies)} 个会话片段...")
+                log.info(
+                    f"🍪 [RPA] 检测到环境变量中的 Cookies，正在注入 {len(cookies)} 个会话片段..."
+                )
                 await self.browser_context.add_cookies(cookies)
                 log.info("✅ Cookies 注入完成。")
         except Exception as e:
@@ -111,19 +134,90 @@ class WeComRPA:
     async def handle_login(self) -> bool:
         """登录检测逻辑"""
         log.info(f"🚀 正在访问表单: {self.form_url}")
-        await self.page.goto(self.form_url)
+        # 使用 load 策略，避免 networkidle 在某些网络下无限期等待
+        await self.page.goto(self.form_url, wait_until="load", timeout=60000)
+
         await self._human_sleep(2)
 
-        # 检测需要登录的二维码
-        qr_selector = ".wwLogin_panel_middle .wwLogin_qrcode"
-        if await self.page.query_selector(qr_selector):
-            log.warning("🔑 检测到登录二维码，请在弹出的浏览器窗口中手动扫码完成登录！")
-            # 轮询等待二维码消失
-            while await self.page.query_selector(qr_selector):
-                await asyncio.sleep(2)
-            log.info("✅ 扫码成功，页面已跳转。")
+        # 检测需要登录的对话框或二维码
+        # 优先使用用户提供的 .login-dialog，因为它包含了完整的登录 UI
+        qr_selectors = [
+            ".dui-snackbar-container.login-dialog",
+            ".login-dialog",
+            ".wwLogin_panel_middle .wwLogin_qrcode",
+            "#login_frame",
+        ]
+
+        target_element = None
+        for sel in qr_selectors:
+            target_element = await self.page.query_selector(sel)
+            if target_element:
+                log.info(f"🔍 匹配到登录组件: {sel}")
+                break
+
+        if target_element:
+            log.warning("🔑 检测到登录入口，请查看飞书推送的二维码并扫码登录！")
+
+            # [GA 适配] 仅在无头模式下推送到飞书，有头模式用户可以直接在浏览器扫码
+            is_headless = getattr(self.browser_context, "_options", {}).get("headless", False)
+            if self.feishu_sender and is_headless:
+                try:
+                    # 等待一下确保 iframe 内部也加载出来（二维码渲染需要时间）
+                    await asyncio.sleep(3)
+                    
+                    qr_path = os.path.join(os.path.dirname(self.user_data_dir), "login_qr.png")
+                    log.info(f"📸 [Headless] 正在截取登录组件并推送到飞书: {qr_path}")
+                    # 设置较短的截图超时并忽略动画等待
+                    await target_element.screenshot(path=qr_path, timeout=10000)
+                    
+                    image_key = self.feishu_sender.upload_image(qr_path)
+                    if image_key:
+                        self.feishu_sender.send_qr_code(image_key, title="🔑 企业微信场景登录")
+                except Exception as e:
+                    log.error(f"❌ 飞书二维码推送失败: {e}")
+                finally:
+                    # 统一清理临时二维码图片（唯一出口）
+                    if os.path.exists(qr_path):
+                        try:
+                            os.remove(qr_path)
+                            log.info("🧹 已清理临时二维码图片。")
+                        except:
+                            pass
+
+            # 轮询等待登录状态改变（即登录组件消失）
+            log.info(f"⏳ 等待扫码中 (限时 {self.login_timeout}s)...")
+            import time
+
+            start_wait = time.time()
+
+            try:
+                while True:
+                    # 检查是否超时
+                    if time.time() - start_wait > self.login_timeout:
+                        log.error(
+                            f"⏰ [RPA] 扫码超时 ({self.login_timeout}s)，任务自动失败结束。"
+                        )
+                        return False
+
+                    # 检查登录组件是否仍然存在
+                    still_there = any(
+                        [await self.page.query_selector(sel) for sel in qr_selectors]
+                    )
+                    if not still_there:
+                        log.info("✅ 登录组件已消失，扫码可能已成功。")
+                        break
+                    await asyncio.sleep(2)
+            finally:
+                # 统一清理临时二维码图片（唯一出口）
+                if os.path.exists(qr_path):
+                    try:
+                        os.remove(qr_path)
+                        log.info("🧹 已清理临时二维码图片。")
+                    except:
+                        pass
 
         # 验证是否进入填报页
+        await self._human_sleep(3) # 给予页面跳转和动态渲染额外缓冲
         await self.page.wait_for_selector(".HoverBtn_btn__2ansF", timeout=60000)
         log.info("🎯 已进入填报页面，环境准备就绪。")
         return True
@@ -268,7 +362,36 @@ class WeComRPA:
         # 完成弹窗
         await self.page.click('.dui-modal-content button:has-text("完成")')
         await self._human_sleep(2)
-        log.info("✨ 数据填充成功，请在浏览器中核对，确保无误后点击页面右下角的【提交】。")
+
+        # [GA 适配] 在无头模式下自动提交
+        # 本地模式下保持原样，方便用户手动复核
+        is_headless = await self.page.evaluate(
+            "() => !window.chrome || !window.chrome.runtime"
+        )
+        # 简单判断，或者直接检查 self.browser_context._options['headless']
+        # 实际上我们可以在 init_browser 里存一个 self.is_headless
+
+        if os.getenv("GITHUB_ACTIONS") == "true" or os.getenv("HEADLESS") == "true":
+            log.info("🚀 [RPA] 检测到静默模式，正在尝试自动点击【提交】按钮...")
+            submit_selectors = [
+                'button.dui-button-type-primary:has-text("提交")',
+                'span:has-text("提交")',
+                ".footer-submit-btn",
+            ]
+            for sel in submit_selectors:
+                try:
+                    btn = await self.page.query_selector(sel)
+                    if btn and await btn.is_visible():
+                        await btn.click()
+                        log.info(f"✅ [RPA] 已触发自动提交 ({sel})")
+                        await self._human_sleep(3)
+                        break
+                except:
+                    continue
+        else:
+            log.info(
+                "✨ 数据填充成功，请在浏览器中核对，确保无误后点击页面右下角的【提交】。"
+            )
 
     async def close(self):
         """关闭浏览器与驱动"""

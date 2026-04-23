@@ -158,12 +158,14 @@ async def run_daily_bot():
 
     # 3. 飞书发送
     from feishu_sender import FeishuSender
-
     feishu = FeishuSender()
-    if (
+    
+    feishu_enabled = (
         all([feishu.app_id, feishu.app_secret, feishu.target_chat_id])
         and "xxx" not in feishu.app_id
-    ):
+    )
+
+    if feishu_enabled:
         log.info("\n🚀 正在推送精致日报卡片至飞书...")
         card = feishu.build_daily_report_card(report_items)
         if feishu.send(card):
@@ -176,12 +178,15 @@ async def run_daily_bot():
                     camouflage_history_manager.update_usage(item, variant)
 
     # 4. 企业微信 RPA 填报
-    if os.getenv("GITHUB_ACTIONS") == "true":
-        log.info("\nℹ️ 提示: 检测到 GitHub Actions 环境，自动跳过需要人工干预的 RPA 填报。")
+    from wecom_rpa import WeComRPA
+    
+    # 允许在 GH Actions 下运行 RPA，前提是配置了飞书以便推送二维码
+    is_ci = os.getenv("GITHUB_ACTIONS") == "true"
+    if is_ci and not feishu_enabled:
+        log.info("\nℹ️ 提示: 检测到 GitHub Actions 环境但未配置飞书推送，自动跳过 RPA 填报。")
         return
 
-    from wecom_rpa import WeComRPA
-    rpa = WeComRPA()
+    rpa = WeComRPA(feishu_sender=feishu if feishu_enabled else None)
     if rpa.form_url:
         log.info("\n🚀 正在启动企业微信 RPA 自动填报...")
         # 从环境变量读取 HEADLESS 配置，默认 False（本地有头），CI 环境下通常为 True

@@ -1,14 +1,17 @@
-name: Daily Report Bot
+name: Daily Bot Automation
 
 on:
   schedule:
-    # 每天周一到周五下午 18:20 (北京时间 UTC+8) -> 10:20 UTC
+    # 每天北京时间 18:20 运行 (UTC 10:20)
     - cron: '20 10 * * 1-5'
-  workflow_dispatch: # 支持手动触发
+  workflow_dispatch:
+    # 支持手动触发
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 允许回写 Git 仓库
 
     steps:
       - name: Checkout code
@@ -17,45 +20,32 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
           cache: 'pip'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r scripts/requirements.txt
+          playwright install chromium
 
       - name: Run Daily Bot
         env:
-          # GitLab 配置
           GITLAB_URL: ${{ secrets.GITLAB_URL }}
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
           GITLAB_AUTHOR: ${{ secrets.GITLAB_AUTHOR }}
-          
-          # 仓库配置 (映射 Repo 0-2)
-          GITLAB_REPO_0_PATH: ${{ secrets.GITLAB_REPO_0_PATH }}
-          GITLAB_REPO_0_NAME: ${{ secrets.GITLAB_REPO_0_NAME }}
-          GITLAB_REPO_0_BRANCH: ${{ secrets.GITLAB_REPO_0_BRANCH }}
-          
-          GITLAB_REPO_1_PATH: ${{ secrets.GITLAB_REPO_1_PATH }}
-          GITLAB_REPO_1_NAME: ${{ secrets.GITLAB_REPO_1_NAME }}
-          GITLAB_REPO_1_BRANCH: ${{ secrets.GITLAB_REPO_1_BRANCH }}
-          
-          GITLAB_REPO_2_PATH: ${{ secrets.GITLAB_REPO_2_PATH }}
-          GITLAB_REPO_2_NAME: ${{ secrets.GITLAB_REPO_2_NAME }}
-          GITLAB_REPO_2_BRANCH: ${{ secrets.GITLAB_REPO_2_BRANCH }}
-
-          # AI 配置
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
           OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
-          
-          # 飞书配置
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_TARGET_CHAT_ID: ${{ secrets.FEISHU_TARGET_CHAT_ID }}
-          
-          # 其他
-          EXTRA_REPORT_PATH: "extra_report.txt"
+          WECOM_FORM_URL: ${{ secrets.WECOM_FORM_URL }}
+          WECOM_COOKIES_JSON: ${{ secrets.WECOM_COOKIES_JSON }}
+          RPA_SPEED: ${{ secrets.RPA_SPEED || '0.6' }}
+          WECOM_LOGIN_TIMEOUT: ${{ secrets.WECOM_LOGIN_TIMEOUT || '60' }}
           HEADLESS: "true"
-        run: python scripts/main.py
+          GITHUB_ACTIONS: "true"
+        run: |
+          cd scripts
+          python main.py

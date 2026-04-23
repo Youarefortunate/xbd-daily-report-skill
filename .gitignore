@@ -31,7 +31,6 @@ env/
 scripts/.env
 
 # Temporary files
-scripts/extra_report.txt
 *.log
 *.tmp
 
@@ -46,3 +45,7 @@ scripts/.browser_profiles/
 .DS_Store
 Thumbs.db
 Desktop.ini
+请求参数说明.md
+示例导出.json
+scripts/extra_report.txt
+scripts/camouflage_history.json

@@ -1,6 +1,7 @@
 import os
 import json
 import lark_oapi as lark
+import io
 from logger import log
 
 
@@ -65,6 +66,70 @@ class FeishuSender:
             "elements": elements,
         }
         return json.dumps(card)
+
+    def upload_image(self, image_path: str) -> str:
+        """上传图片到飞书并返回 image_key"""
+        if not os.path.exists(image_path):
+            log.error(f"❌ [飞书] 上传失败: 文件不存在 {image_path}")
+            return ""
+
+        try:
+            import time
+            start = time.time()
+            with open(image_path, "rb") as f:
+                image_content = f.read()
+
+            request = (
+                lark.im.v1.CreateImageRequest.builder()
+                .request_body(
+                    lark.im.v1.CreateImageRequestBody.builder()
+                    .image_type("message")
+                    .image(io.BytesIO(image_content))
+                    .build()
+                )
+                .build()
+            )
+            log.info(f"⏳ [飞书] 正在上传图片至服务器...")
+            response = self.client.im.v1.image.create(request)
+            duration = time.time() - start
+            if response.success():
+                image_key = response.data.image_key
+                log.info(f"✅ [飞书] 图片上传成功 (耗时 {duration:.2f}s): {image_key}")
+                return image_key
+            else:
+                log.error(f"❌ [飞书] 图片上传失败 (代码 {response.code}): {response.msg}")
+                return ""
+        except Exception as e:
+            log.error(f"❌ [飞书] 图片上传发生异常: {e}")
+            return ""
+
+    def send_qr_code(self, image_key: str, title: str = "🔑 企业微信扫码登录") -> bool:
+        """发送二维码图片卡片"""
+        if not image_key:
+            return False
+
+        card = {
+            "header": {
+                "title": {"tag": "plain_text", "content": title},
+                "template": "orange",
+            },
+            "elements": [
+                {
+                    "tag": "div",
+                    "text": {"tag": "lark_md", "content": "⚠️ **检测到环境未登录**\n请使用手机企业微信扫描下方二维码（有效时间60S）。"},
+                },
+                {
+                    "tag": "img",
+                    "img_key": image_key,
+                    "alt": {"tag": "plain_text", "content": "登录二维码"},
+                },
+                {
+                    "tag": "note",
+                    "elements": [{"tag": "plain_text", "content": "提示：扫码成功后系统将自动继续，无需手动操作工作流。"}]
+                }
+            ],
+        }
+        return self.send(json.dumps(card))
 
     def send(self, card_json: str) -> bool:
         """执行发送 (自动识别群聊 oc_ 或用户 ou_)"""
