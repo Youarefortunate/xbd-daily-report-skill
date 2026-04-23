@@ -85,6 +85,7 @@ class AIProcessor:
         extra_report_path: str,
         system_prompt_path: str,
         fake_items: list = None,
+        extra_report_items: list = None,
     ) -> list:
         """
         执行完整的润色流程 (异步)
@@ -92,6 +93,7 @@ class AIProcessor:
         :param extra_report_path: 额外补充信息文件路径
         :param system_prompt_path: 系统提示词文件路径
         :param fake_items: 伪装素材列表
+        :param extra_report_items: 动态补充的工作内容列表 (如来自飞书)
         :return: 润色后的 JSON 列表
         """
         # 1. 加载系统提示词
@@ -100,13 +102,25 @@ class AIProcessor:
             raise Exception(f"错误: 无法加载提示词文件: {system_prompt_path}")
 
         # 2. 加载额外信息内容
-        extra_content = self._load_file_content(extra_report_path)
+        local_extra = self._load_file_content(extra_report_path)
+        
+        # 合并本地文件与动态传入的内容
+        merged_extra = []
+        if local_extra:
+            merged_extra.append(local_extra)
+        if extra_report_items:
+            merged_extra.extend(extra_report_items)
+            
+        extra_content = "\n".join(merged_extra) if merged_extra else ""
 
         if extra_content:
-            log.info("\n📝 额外补充信息")
+            log.info("\n📝 额外补充信息 (含飞书指令)")
             log.info("-" * 60)
-            log.info(f" 📂 采集文件: {os.path.basename(extra_report_path)}")
-            log.info(f" └─ 补充内容: \n{extra_content}")
+            if local_extra:
+                log.info(f" 📂 采集文件: {os.path.basename(extra_report_path)}")
+            if extra_report_items:
+                log.info(f" 💬 飞书拉取: {len(extra_report_items)} 条指令内容")
+            log.info(f" └─ 补充详情: \n{extra_content}")
             log.info("-" * 60 + "\n")
 
         # 边界检查

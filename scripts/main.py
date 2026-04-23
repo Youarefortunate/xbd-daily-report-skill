@@ -144,11 +144,23 @@ async def run_daily_bot():
 
     print_raw_commits(commits, fake_items=fake_items)
 
+    # 1.5 从飞书拉取额外补报
+    from feishu_sender import FeishuSender
+    feishu = FeishuSender()
+    log.info("📡 正在检查飞书实时指令...")
+    feishu_extra = feishu.fetch_extra_work()
+
     # 2. AI 润色处理
     from ai_processor import AIProcessor
 
     processor = AIProcessor()
-    report_items = await processor.process(commits, extra_path, prompt_path, fake_items=fake_items)
+    report_items = await processor.process(
+        git_commits=commits,
+        extra_report_path=extra_path,
+        system_prompt_path=prompt_path,
+        fake_items=fake_items,
+        extra_report_items=feishu_extra
+    )
 
     if not report_items:
         log.warning("⚠️ 提示: 没有生成任何日报条目，终止后续流程。")

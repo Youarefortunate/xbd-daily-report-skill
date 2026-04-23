@@ -2,6 +2,8 @@ import os
 import json
 import lark_oapi as lark
 import io
+import time
+from datetime import datetime, date
 from logger import log
 
 
@@ -168,3 +170,89 @@ class FeishuSender:
         except Exception as e:
             log.error(f"❌ [飞书] 卡片推送网关发生异常: {e}")
             return False
+
+    def fetch_extra_work(self) -> list:
+        """
+        从飞书私聊/群聊中拉取今日带有 /add 前缀的消息作为额外工作
+        """
+        if not self.app_id or not self.target_chat_id:
+            return []
+
+        # 1. 确定 ID 类型
+        container_id_type = "chat"
+        # 默认 chat_id 就是 container_id
+        
+        # 2. 构造请求：获取今日消息
+        # 获取今日 0 点的时间戳 (秒)
+        today_start = int(datetime.combine(date.today(), datetime.min.time()).timestamp())
+        
+        request = (
+            lark.im.v1.ListMessageRequest.builder()
+            .container_id_type(container_id_type)
+            .container_id(self.target_chat_id)
+            .start_time(str(today_start)) # SDK 要求字符串
+            .build()
+        )
+
+        extra_items = []
+        try:
+            log.info(f"🔍 [飞书] 正在拉取今日指令消息 (Start: {today_start})...")
+            response = self.client.im.v1.message.list(request)
+            if not response.success():
+                log.error(f"❌ [飞书] 拉取消息失败: {response.msg}")
+                return []
+
+            messages = response.data.items if response.data and response.data.items else []
+            for msg in messages:
+                # 只处理文本消息
+                if msg.msg_type != "text":
+                    continue
+                
+                # 飞书文本内容是 JSON 字符串，例如 '{"text":"/add hello"}'
+                try:
+                    content_dict = json.loads(msg.body.content)
+                    raw_text = content_dict.get("text", "").strip()
+                    
+                    if raw_text.startswith("/add"):
+                        # 提取内容
+                        content = raw_text[4:].strip()
+                        if not content:
+                            continue
+                            
+                        # 处理多行输入（用户可能输入 1. xxx 2. xxx）
+                        lines = [line.strip() for line in content.split("\n") if line.strip()]
+                        for line in lines:
+                            # 去掉前面的序号 如 "1、" 或 "1."
+                            import re
+                            clean_line = re.sub(r'^\d+[\.、\s\-]+', '', line).strip()
+                            
+                            # --- 智能过滤 ---
+                            # 1. 长度过滤 (太短没意义)
+                            if len(clean_line) < 2:
+                                continue
+                            
+                            # 2. 关键词/模式过滤 (过滤掉 test, freege, ..., 纯数字等)
+                            lower_line = clean_line.lower()
+                            meaningless_patterns = [
+                                r'^test$', r'^testing$', r'^[\.\s\?！!]+$', 
+                                r'^freege$', r'^\d+$', r'^[a-zA-Z]$', r'^ok$', r'^111+$'
+                            ]
+                            is_meaningless = False
+                            for pattern in meaningless_patterns:
+                                if re.match(pattern, lower_line):
+                                    is_meaningless = True
+                                    break
+                            
+                            if is_meaningless:
+                                log.debug(f"🗑️ [飞书] 过滤无意义补报: {clean_line}")
+                                continue
+                                
+                            extra_items.append(clean_line)
+                            log.info(f"➕ [飞书] 识别到有效补报: {clean_line}")
+                except:
+                    continue
+                    
+        except Exception as e:
+            log.error(f"❌ [飞书] 拉取消息发生异常: {e}")
+            
+        return extra_items
