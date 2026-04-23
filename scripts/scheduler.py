@@ -2,8 +2,16 @@ import os
 import sys
 import argparse
 import subprocess
-import winreg
-import ctypes
+
+try:
+    import winreg
+    import ctypes
+except ImportError:
+    # 非 Windows 环境下，调度器逻辑不适用
+    if os.name != "nt":
+        pass
+    else:
+        raise
 from pathlib import Path
 from logger import log
 
