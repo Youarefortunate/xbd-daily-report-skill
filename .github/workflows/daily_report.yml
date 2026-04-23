@@ -40,6 +40,19 @@ jobs:
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_TARGET_CHAT_ID: ${{ secrets.FEISHU_TARGET_CHAT_ID }}
+          GITLAB_REPO_0_PATH: ${{ secrets.GITLAB_REPO_0_PATH }}
+          GITLAB_REPO_0_BRANCH: ${{ secrets.GITLAB_REPO_0_BRANCH }}
+          GITLAB_REPO_0_NAME: ${{ secrets.GITLAB_REPO_0_NAME }}
+          GITLAB_REPO_1_PATH: ${{ secrets.GITLAB_REPO_1_PATH }}
+          GITLAB_REPO_1_BRANCH: ${{ secrets.GITLAB_REPO_1_BRANCH }}
+          GITLAB_REPO_1_NAME: ${{ secrets.GITLAB_REPO_1_NAME }}
+          GITLAB_REPO_2_PATH: ${{ secrets.GITLAB_REPO_2_PATH }}
+          GITLAB_REPO_2_BRANCH: ${{ secrets.GITLAB_REPO_2_BRANCH }}
+          GITLAB_REPO_2_NAME: ${{ secrets.GITLAB_REPO_2_NAME }}
+          EXTRA_REPORT_PATH: ${{ secrets.EXTRA_REPORT_PATH || 'extra_report.txt' }}
+          CAMOUFLAGE_THRESHOLD: ${{ secrets.CAMOUFLAGE_THRESHOLD || '8' }}
+          CAMOUFLAGE_LOOKBACK: ${{ secrets.CAMOUFLAGE_LOOKBACK || '14' }}
+          CAMOUFLAGE_COOLDOWN: ${{ secrets.CAMOUFLAGE_COOLDOWN || '10' }}
           WECOM_FORM_URL: ${{ secrets.WECOM_FORM_URL }}
           WECOM_RPA_SPEED: ${{ secrets.WECOM_RPA_SPEED || '0.6' }}
           WECOM_LOGIN_TIMEOUT: ${{ secrets.WECOM_LOGIN_TIMEOUT || '60' }}
