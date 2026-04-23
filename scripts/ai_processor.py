@@ -19,7 +19,12 @@ class AIProcessor:
         self.base_url = base_url or os.getenv(
             "OPENAI_BASE_URL", "https://api.openai.com/v1"
         )
-        self.model = model or os.getenv("OPENAI_MODEL", "")
+        # 优先使用传入参数，其次环境
+        env_model = os.getenv("OPENAI_MODEL", "")
+        self.model = model or env_model
+        
+        if not env_model:
+            log.warning(f"⚠️ 警告: 未在环境中探测到 OPENAI_MODEL")
         
         # 显式初始化异步 httpx 客户端
         http_client = httpx.AsyncClient(
