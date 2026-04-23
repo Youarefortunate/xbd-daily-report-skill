@@ -41,7 +41,6 @@ jobs:
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_TARGET_CHAT_ID: ${{ secrets.FEISHU_TARGET_CHAT_ID }}
           WECOM_FORM_URL: ${{ secrets.WECOM_FORM_URL }}
-          WECOM_COOKIES_JSON: ${{ secrets.WECOM_COOKIES_JSON }}
           WECOM_RPA_SPEED: ${{ secrets.WECOM_RPA_SPEED || '0.6' }}
           WECOM_LOGIN_TIMEOUT: ${{ secrets.WECOM_LOGIN_TIMEOUT || '60' }}
           HEADLESS: "true"

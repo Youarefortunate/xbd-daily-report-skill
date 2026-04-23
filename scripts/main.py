@@ -113,12 +113,6 @@ async def run_daily_bot():
     log.info("🎬 [系统] 开始执行日报生成流水线...")
     load_dotenv()
     
-    # 0.1 核心配置校验
-    if not os.getenv("WECOM_COOKIES_JSON"):
-        log.error("❌ [配置错误] 未检测到 WECOM_COOKIES_JSON。")
-        log.error("   请在 GitHub 仓库 Settings -> Secrets -> Actions 中添加该 Secret。")
-        log.error("   本地测试请确保 .env 文件中已配置。")
-        return
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
     # 获取动态路径配置

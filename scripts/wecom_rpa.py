@@ -102,34 +102,12 @@ class WeComRPA:
             **launch_params
         )
 
-        # [GitHub Action 适配] 尝试从环境变量注入 Cookies
-        await self._inject_cookies_if_needed()
-
         self.page = await self.browser_context.new_page()
         # 注入反检测脚本
         await self.page.add_init_script(
             "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
         )
         log.info("✅ [RPA] 浏览器启动成功。")
-
-    async def _inject_cookies_if_needed(self):
-        """支持从环境变量 WECOM_COOKIES_JSON 注入会话信息"""
-        cookies_json = os.getenv("WECOM_COOKIES_JSON")
-        if not cookies_json:
-            return
-
-        try:
-            import json
-
-            cookies = json.loads(cookies_json)
-            if isinstance(cookies, list):
-                log.info(
-                    f"🍪 [RPA] 检测到环境变量中的 Cookies，正在注入 {len(cookies)} 个会话片段..."
-                )
-                await self.browser_context.add_cookies(cookies)
-                log.info("✅ Cookies 注入完成。")
-        except Exception as e:
-            log.warning(f"⚠️ [RPA] Cookies 注入失败: {e}")
 
     async def handle_login(self) -> bool:
         """登录检测逻辑"""
