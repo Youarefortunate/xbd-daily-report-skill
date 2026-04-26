@@ -1,8 +1,0 @@
-interface:
-  display_name: "js-reverse-automation"
-  short_description: "基于 Antigravity 浏览器代理与 Playwright-CLI 的 JS 逆向自动化分析与代码生成技能"
-  default_prompt: |
-    Target URL: 
-    Parameters To Analyze: 
-    Environment Constraints: 
-    Optional Fetch Example: 
