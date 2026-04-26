@@ -3,7 +3,7 @@ name: Daily Bot Automation
 on:
   schedule:
     # 每天北京时间 18:20 运行 (UTC 10:20)
-    - cron: '20 10 * * 1-5'
+    - cron: "20 10 * * 1-5"
   workflow_dispatch:
     # 支持手动触发
 
@@ -11,7 +11,7 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 允许回写 Git 仓库
+      contents: write # 允许回写 Git 仓库
 
     steps:
       - name: Checkout code
@@ -20,8 +20,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -58,6 +58,6 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: update camouflage history [skip ci]"
-          file_pattern: 'scripts/camouflage_history.json'
+          file_pattern: "scripts/camouflage_history.json"
           commit_user_name: "GitHub Actions Bot"
           commit_user_email: "actions@github.com"

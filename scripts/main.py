@@ -97,6 +97,25 @@ def print_polished_report(report_items):
         log.info("")
 
 
+async def is_github_actions_environment() -> bool:
+    """步骤 0: 是否为Github Actions环境，并判断今日是否需要执行"""
+    is_headless = os.getenv("HEADLESS", "false").lower() == "true"
+    if is_headless:
+        weekdays_config = str(config.get("scheduler.weekdays", "1,2,3,4,5"))
+        if weekdays_config:
+            from datetime import datetime
+
+            # weekday() 返回 0-6 (周一至周日)，转换为 1-7 对应配置
+            current_day = str(datetime.now().weekday() + 1)
+            allowed_days = [d.strip() for d in weekdays_config.split(",") if d.strip()]
+            if current_day not in allowed_days:
+                log.info(
+                    f"📅 [跳过] 静默模式检测到今日 (周{current_day}) 不在预设工作日 [{weekdays_config}] 内，程序已停止。"
+                )
+                return False
+    return True
+
+
 async def collect_data(repo_configs):
     """步骤 1: 采集 GitLab 数据与飞书动态指令"""
     from gitlab_collector import GitLabCollector
@@ -211,6 +230,10 @@ async def fill_rpa(report_items, feishu, feishu_enabled):
 
 async def run_daily_bot():
     """主编排逻辑"""
+    # 0. 准入检查
+    if not await is_github_actions_environment():
+        return
+
     log.info("🎬 [系统] 开始执行日报生成流水线...")
     load_dotenv()
 

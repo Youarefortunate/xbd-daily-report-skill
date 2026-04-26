@@ -36,24 +36,26 @@ scripts/
 ### 1. 初始化环境
 建议在项目根目录下或 `scripts/` 目录下执行：
 ```powershell
-uv venv
-uv pip install -r requirements.txt
-uv run playwright install chrome
+python -m venv .venv
+# 激活环境
+.venv\Scripts\activate
+pip install -r requirements.txt
+playwright install chrome
 ```
 
 ### 2. 部署自动化调度 (可选)
 根据 `.env` 配置一键挂载 Windows 定时任务：
 ```powershell
 # 安装并同步配置 (含定时任务、自启动、PATH 注入)
-uv run python scripts/scheduler.py --install
+python scripts/scheduler.py --install
 
 # 查看当前注册状态
-uv run python scripts/scheduler.py --status
+python scripts/scheduler.py --status
 ```
 
 ### 3. 一键运行 (手动模式)
 ```powershell
-uv run python scripts/main.py
+python scripts/main.py
 ```
 若已开启 `SCHEDULER_AUTO_PATH`，可在任意位置直接运行：
 ```powershell
