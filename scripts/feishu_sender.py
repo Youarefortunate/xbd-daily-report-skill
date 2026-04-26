@@ -5,6 +5,7 @@ import io
 import time
 from datetime import datetime, date
 from logger import log
+from config import config
 
 
 class FeishuSender:
@@ -15,7 +16,8 @@ class FeishuSender:
     def __init__(self):
         self.app_id = os.getenv("FEISHU_APP_ID", "")
         self.app_secret = os.getenv("FEISHU_APP_SECRET", "")
-        self.target_chat_id = os.getenv("FEISHU_TARGET_CHAT_ID", "")
+        self.target_chat_id = config.get("feishu.target_chat_id", "")
+        self.command_chat_id = os.getenv("FEISHU_COMMAND_CHAT_ID", "")
         self.template_color = "blue"
 
         # 初始化 SDK Client
@@ -77,6 +79,7 @@ class FeishuSender:
 
         try:
             import time
+
             start = time.time()
             with open(image_path, "rb") as f:
                 image_content = f.read()
@@ -99,7 +102,9 @@ class FeishuSender:
                 log.info(f"✅ [飞书] 图片上传成功 (耗时 {duration:.2f}s): {image_key}")
                 return image_key
             else:
-                log.error(f"❌ [飞书] 图片上传失败 (代码 {response.code}): {response.msg}")
+                log.error(
+                    f"❌ [飞书] 图片上传失败 (代码 {response.code}): {response.msg}"
+                )
                 return ""
         except Exception as e:
             log.error(f"❌ [飞书] 图片上传发生异常: {e}")
@@ -118,7 +123,10 @@ class FeishuSender:
             "elements": [
                 {
                     "tag": "div",
-                    "text": {"tag": "lark_md", "content": "⚠️ **检测到环境未登录**\n请使用手机企业微信扫描下方二维码（有效时间60S）。"},
+                    "text": {
+                        "tag": "lark_md",
+                        "content": "⚠️ **检测到环境未登录**\n请使用手机企业微信扫描下方二维码（有效时间60S）。",
+                    },
                 },
                 {
                     "tag": "img",
@@ -127,8 +135,13 @@ class FeishuSender:
                 },
                 {
                     "tag": "note",
-                    "elements": [{"tag": "plain_text", "content": "提示：扫码成功后系统将自动继续，无需手动操作工作流。"}]
-                }
+                    "elements": [
+                        {
+                            "tag": "plain_text",
+                            "content": "提示：扫码成功后系统将自动继续，无需手动操作工作流。",
+                        }
+                    ],
+                },
             ],
         }
         return self.send(json.dumps(card))
@@ -178,19 +191,33 @@ class FeishuSender:
         if not self.app_id or not self.target_chat_id:
             return []
 
-        # 1. 确定 ID 类型 (如果是 ou_ 需要转换为 oc_)
-        resolved_id = self._resolve_chat_id()
+        # 1. 确定用于拉取的 Chat ID
+        # 优先使用专门的命令拉取 ID，如果没有则尝试使用目标发送 ID（仅当其为 oc_ 开头时）
+        fetch_id = self.command_chat_id if self.command_chat_id else self.target_chat_id
+
+        if not fetch_id or not fetch_id.startswith("oc_"):
+            log.info(f"ℹ️ [飞书] 当前未配置有效的群聊/私聊 ID (oc_...)，跳过指令拉取。")
+            log.info(
+                f"💡 提示: 若需使用 /add 指令拉取功能，请在 .env 中配置 FEISHU_COMMAND_CHAT_ID。"
+            )
+            log.info(
+                f"🔗 获取方式: 飞书开放平台-API调试台 -> im.v1.chat.list 接口 -> 查找 chat_mode='p2p' 的 chat_id。"
+            )
+            return []
+
         container_id_type = "chat"
-        
+
         # 2. 构造请求：获取今日消息
         # 获取今日 0 点的时间戳 (秒)
-        today_start = int(datetime.combine(date.today(), datetime.min.time()).timestamp())
-        
+        today_start = int(
+            datetime.combine(date.today(), datetime.min.time()).timestamp()
+        )
+
         request = (
             lark.im.v1.ListMessageRequest.builder()
             .container_id_type(container_id_type)
-            .container_id(resolved_id)
-            .start_time(str(today_start)) # SDK 要求字符串
+            .container_id(fetch_id)
+            .start_time(str(today_start))  # SDK 要求字符串
             .build()
         )
 
@@ -202,90 +229,81 @@ class FeishuSender:
                 log.error(f"❌ [飞书] 拉取消息失败: {response.msg}")
                 return []
 
-            messages = response.data.items if response.data and response.data.items else []
+            messages = (
+                response.data.items if response.data and response.data.items else []
+            )
             for msg in messages:
-                # 只处理文本消息
+                # --- 严谨过滤 ---
+                # 1. 过滤已删除或撤回的消息
+                if getattr(msg, "deleted", False):
+                    continue
+
+                # 2. 身份过滤：只处理由真实用户发送的消息 (排除机器人/系统消息)
+                if getattr(msg.sender, "sender_type", "") != "user":
+                    continue
+
+                # 3. 类型过滤：只处理文本消息
                 if msg.msg_type != "text":
                     continue
-                
+
+                # 4. 时间过滤：双重校验，确保仅处理今天的数据 (create_time 是毫秒戳)
+                if int(msg.create_time) / 1000 < today_start:
+                    continue
+
                 # 飞书文本内容是 JSON 字符串，例如 '{"text":"/add hello"}'
                 try:
                     content_dict = json.loads(msg.body.content)
                     raw_text = content_dict.get("text", "").strip()
-                    
+
                     if raw_text.startswith("/add"):
                         # 提取内容
                         content = raw_text[4:].strip()
                         if not content:
                             continue
-                            
+
                         # 处理多行输入（用户可能输入 1. xxx 2. xxx）
-                        lines = [line.strip() for line in content.split("\n") if line.strip()]
+                        lines = [
+                            line.strip() for line in content.split("\n") if line.strip()
+                        ]
                         for line in lines:
                             # 去掉前面的序号 如 "1、" 或 "1."
                             import re
-                            clean_line = re.sub(r'^\d+[\.、\s\-]+', '', line).strip()
-                            
+
+                            clean_line = re.sub(r"^\d+[\.、\s\-]+", "", line).strip()
+
                             # --- 智能过滤 ---
                             # 1. 长度过滤 (太短没意义)
                             if len(clean_line) < 2:
                                 continue
-                            
+
                             # 2. 关键词/模式过滤 (过滤掉 test, freege, ..., 纯数字等)
                             lower_line = clean_line.lower()
                             meaningless_patterns = [
-                                r'^test$', r'^testing$', r'^[\.\s\?！!]+$', 
-                                r'^freege$', r'^\d+$', r'^[a-zA-Z]$', r'^ok$', r'^111+$'
+                                r"^test$",
+                                r"^testing$",
+                                r"^[\.\s\?！!]+$",
+                                r"^freege$",
+                                r"^\d+$",
+                                r"^[a-zA-Z]$",
+                                r"^ok$",
+                                r"^111+$",
                             ]
                             is_meaningless = False
                             for pattern in meaningless_patterns:
                                 if re.match(pattern, lower_line):
                                     is_meaningless = True
                                     break
-                            
+
                             if is_meaningless:
                                 log.debug(f"🗑️ [飞书] 过滤无意义补报: {clean_line}")
                                 continue
-                                
+
                             extra_items.append(clean_line)
                             log.info(f"➕ [飞书] 识别到有效补报: {clean_line}")
                 except:
                     continue
-                    
+
         except Exception as e:
             log.error(f"❌ [飞书] 拉取消息发生异常: {e}")
-            
+
         return extra_items
-
-    def _resolve_chat_id(self) -> str:
-        """
-        将 open_id/union_id 转换为列表查询所需的 chat_id
-        """
-        if not self.target_chat_id or self.target_chat_id.startswith("oc_"):
-            return self.target_chat_id
-
-        # 如果是 ou_ 或 on_，需要通过创建/获取会话接口换取 chat_id
-        try:
-            receive_id_type = "open_id"
-            if self.target_chat_id.startswith("on_"):
-                receive_id_type = "union_id"
-
-            request = (
-                lark.im.v1.CreateChatRequest.builder()
-                .request_body(
-                    lark.im.v1.CreateChatRequestBody.builder()
-                    .name("Direct Chat Resolver")
-                    .build()
-                )
-                .build()
-            )
-            # 注意：im.v1.chat.create 是创建群组。
-            # 获取 P2P 会话 ID 的正确方式是：如果没有 oc_，则目前的 List API 可能无法直接拉取，
-            # 除非使用“获取用户或机器人所在的群列表”并匹配。
-            # 鉴于权限复杂性，我们先记录警告并尝试直接使用。
-            
-            # 备选方案：提示用户使用 oc_ ID。
-            log.warning(f"⚠️ [飞书] 当前配置的是用户 ID ({self.target_chat_id})而非群聊 ID，指令拉取可能受限。建议在飞书后台查询以 oc_ 开头的 Chat ID。")
-            return self.target_chat_id
-        except:
-            return self.target_chat_id

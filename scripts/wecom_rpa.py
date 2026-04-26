@@ -3,6 +3,7 @@ import os
 import random
 from playwright.async_api import async_playwright, Page
 from logger import log
+from config import config
 
 
 class WeComRPA:
@@ -33,9 +34,9 @@ class WeComRPA:
         self.playwright = None
 
         # 模拟运行速度 (0.1~1.0, 越小越快, 默认 0.6)
-        self.speed_val = float(os.getenv("WECOM_RPA_SPEED", "0.6"))
+        self.speed_val = float(config.get("rpa.speed", 0.6))
         # 登录超时时间
-        self.login_timeout = int(os.getenv("WECOM_LOGIN_TIMEOUT", "60"))
+        self.login_timeout = int(config.get("rpa.login_timeout", 60))
 
     async def _human_sleep(self, base_delay: float = 1.0):
         """
@@ -137,20 +138,26 @@ class WeComRPA:
             log.warning("🔑 检测到登录入口，请查看飞书推送的二维码并扫码登录！")
 
             # [GA 适配] 仅在无头模式下推送到飞书，有头模式用户可以直接在浏览器扫码
-            is_headless = getattr(self.browser_context, "_options", {}).get("headless", False)
+            is_headless = getattr(self.browser_context, "_options", {}).get(
+                "headless", False
+            )
             if self.feishu_sender and is_headless:
                 try:
                     # 等待一下确保 iframe 内部也加载出来（二维码渲染需要时间）
                     await asyncio.sleep(3)
-                    
-                    qr_path = os.path.join(os.path.dirname(self.user_data_dir), "login_qr.png")
+
+                    qr_path = os.path.join(
+                        os.path.dirname(self.user_data_dir), "login_qr.png"
+                    )
                     log.info(f"📸 [Headless] 正在截取登录组件并推送到飞书: {qr_path}")
                     # 设置较短的截图超时并忽略动画等待
                     await target_element.screenshot(path=qr_path, timeout=10000)
-                    
+
                     image_key = self.feishu_sender.upload_image(qr_path)
                     if image_key:
-                        self.feishu_sender.send_qr_code(image_key, title="🔑 企业微信场景登录")
+                        self.feishu_sender.send_qr_code(
+                            image_key, title="🔑 企业微信场景登录"
+                        )
                 except Exception as e:
                     log.error(f"❌ 飞书二维码推送失败: {e}")
                 finally:
@@ -195,7 +202,7 @@ class WeComRPA:
                         pass
 
         # 验证是否进入填报页
-        await self._human_sleep(3) # 给予页面跳转和动态渲染额外缓冲
+        await self._human_sleep(3)  # 给予页面跳转和动态渲染额外缓冲
         await self.page.wait_for_selector(".HoverBtn_btn__2ansF", timeout=60000)
         log.info("🎯 已进入填报页面，环境准备就绪。")
         return True
@@ -372,8 +379,13 @@ class WeComRPA:
             )
 
     async def close(self):
-        """关闭浏览器与驱动"""
-        if self.browser_context:
-            await self.browser_context.close()
-        if self.playwright:
-            await self.playwright.stop()
+        """优雅关闭浏览器与驱动资源"""
+        try:
+            if self.browser_context:
+                await self.browser_context.close()
+                self.browser_context = None
+            if self.playwright:
+                await self.playwright.stop()
+                self.playwright = None
+        except Exception:
+            pass

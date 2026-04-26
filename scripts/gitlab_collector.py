@@ -5,6 +5,7 @@ import requests
 import os
 from logger import log
 from camouflage import CamouflageItem, camouflage_history_manager
+from config import config
 import random
 
 
@@ -15,16 +16,16 @@ class GitLabCollector:
     TZ_CHINESE = timezone(timedelta(hours=8))
 
     def __init__(self, url: str = None, token: str = None, author: str = None):
-        self.url = (url or os.getenv("GITLAB_URL", "")).rstrip("/")
-        self.token = token or os.getenv("GITLAB_TOKEN", "")
-        self.author = author or os.getenv("GITLAB_AUTHOR", "")
+        self.url = (url or config.get("gitlab.url", "")).rstrip("/")
+        self.token = token or os.getenv("GITLAB_TOKEN", "") # TOKEN 依然优先走 ENV/Secret
+        self.author = author or config.get("gitlab.author", "")
         self.headers = {"PRIVATE-TOKEN": self.token}
         # 无意义提交的关键词/前缀过滤列表
         self.ignore_prefixes = [
             "merge branch",
             "merge remote-tracking branch",
             "merge tag",
-            "revert \"",
+            'revert "',
         ]
         self.ignore_messages = [
             "chore: chore",
@@ -44,26 +45,26 @@ class GitLabCollector:
         """
         if not title:
             return True
-        
+
         t_lower = title.strip().lower()
-        
+
         # 1. 过滤合并提交
         for prefix in self.ignore_prefixes:
             if t_lower.startswith(prefix):
                 return True
-        
+
         # 2. 过滤完全匹配的无意义词汇
         if t_lower in self.ignore_messages:
             return True
-        
+
         # 3. 过滤过长的重复字符或者单纯的标点符号
         if len(set(t_lower)) <= 2 and len(t_lower) > 2:
-             return True
-             
+            return True
+
         # 4. 过滤过短的提交 (例如 "a", "fix")
         if len(t_lower.replace(" ", "")) < 4 and ":" not in t_lower:
             return True
-            
+
         return False
 
     def _get_all_branches(self, project_path: str) -> list:
@@ -112,11 +113,11 @@ class GitLabCollector:
                             and a_lower not in c.get("author_email", "").lower()
                         ):
                             continue
-                    
+
                     # [新增] 无意义提交过滤
                     if self._is_meaningless_commit(c.get("title", "")):
                         continue
-                        
+
                     branch_commits.append(c)
 
                 if len(data) < 100:
@@ -244,21 +245,25 @@ class GitLabCollector:
                 target_branches = self._get_all_branches(path)
 
             for branch in target_branches:
-                commits = self._fetch_commits_by_branch(path, branch, since_str, until_str)
+                commits = self._fetch_commits_by_branch(
+                    path, branch, since_str, until_str
+                )
                 for c in commits:
                     activity_id = c["id"]
                     if activity_id in seen_ids:
                         continue
 
                     # 冷却检查
-                    if camouflage_history_manager.is_in_cooldown(activity_id, cooldown_days):
+                    if camouflage_history_manager.is_in_cooldown(
+                        activity_id, cooldown_days
+                    ):
                         continue
 
                     seen_ids.add(activity_id)
-                    
+
                     # 格式化日期
                     item_date = c.get("created_at", "")[:10]
-                    
+
                     camou_item = (
                         CamouflageItem.builder()
                         .set_id(activity_id)

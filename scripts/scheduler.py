@@ -14,6 +14,7 @@ except ImportError:
         raise
 from pathlib import Path
 from logger import log
+from config import config
 
 # --- 1. 基础配置 ---
 TASK_NAME = "DailyBot_Miao"
@@ -28,12 +29,8 @@ def get_app_dir():
 
 def get_python_exe():
     """锁定 Python 解释器路径 (支持多级溯源与手动覆盖)"""
-    from dotenv import load_dotenv
-
-    load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
-
     # 1. 优先读取手动配置 (为特殊环境留的口子)
-    manual_env = os.getenv("SCHEDULER_INTERPRETER")
+    manual_env = config.get("scheduler.interpreter")
     if manual_env and os.path.exists(manual_env):
         return manual_env
 
@@ -243,16 +240,11 @@ def run_flow():
 
 
 def sync_all():
-    """根据 .env 状态全量同步同步配置"""
-    from dotenv import load_dotenv
-
-    dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
-    load_dotenv(dotenv_path)
-
-    auto_start = os.getenv("SCHEDULER_AUTO_START", "false").lower() == "true"
-    auto_path = os.getenv("SCHEDULER_AUTO_PATH", "false").lower() == "true"
-    run_time = os.getenv("SCHEDULER_TIME", "18:00")
-    weekdays = os.getenv("SCHEDULER_WEEKDAYS", "")
+    """根据配置状态全量同步同步配置"""
+    auto_start = config.get("scheduler.auto_start", False)
+    auto_path = config.get("scheduler.auto_path", False)
+    run_time = config.get("scheduler.time", "18:00")
+    weekdays = str(config.get("scheduler.weekdays", ""))
 
     log.info("🔄 [系统] 正在同步调度器配置...")
     manage_startup(auto_start)
@@ -263,16 +255,11 @@ def sync_all():
 
 def show_status():
     """查看当前注册状态 (精装修版)"""
-    from dotenv import load_dotenv
-
-    dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
-    load_dotenv(dotenv_path)
-
-    # 读取 .env 配置
-    auto_start = os.getenv("SCHEDULER_AUTO_START", "false")
-    auto_path = os.getenv("SCHEDULER_AUTO_PATH", "false")
-    run_time = os.getenv("SCHEDULER_TIME", "18:00")
-    weekdays = os.getenv("SCHEDULER_WEEKDAYS", "全部")
+    # 读取配置
+    auto_start = config.get("scheduler.auto_start", False)
+    auto_path = config.get("scheduler.auto_path", False)
+    run_time = config.get("scheduler.time", "18:00")
+    weekdays = config.get("scheduler.weekdays", "全部")
 
     log.info("\n" + "╔" + "═" * 58 + "╗")
     log.info("║" + " " * 17 + "🚀 XBD 日报自动化流 · 系统仪表盘" + " " * 10 + "║")

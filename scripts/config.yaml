@@ -1,0 +1,29 @@
+# XBD 日报自动化配置文件
+# 存放非敏感、结构化的公共预设
+
+# 提示词与补充信息路径
+extra_report_path: "extra_report.txt"
+
+openai:
+  base_url: "https://ark.cn-beijing.volces.com/api/v3"
+  model: "doubao-seed-2-0-code-preview-260215"
+
+rpa:
+  # 模拟真人速度 (0.1~1.0, 1.0为标准速，越小越快)
+  speed: 0.6
+  # 扫码登录超时时间(秒)
+  login_timeout: 60
+
+# 伪装补全策略
+camouflage:
+  threshold: 5
+  lookback: 14
+  cooldown: 10
+
+# Windows 定时任务调度器配置
+scheduler:
+  auto_start: true
+  auto_path: true
+  time: "18:15"
+  # 指定运行日期: 1-7 分别代表周一至周日
+  weekdays: "1,2,3,4,5"

@@ -4,42 +4,23 @@ import asyncio
 from dotenv import load_dotenv
 from logger import log
 from camouflage import camouflage_history_manager
+from config import config
+import warnings
 
-
-def load_repo_configs():
-    """从环境变量加载 GitLab 仓库配置"""
-    configs = []
-    i = 0
-    while True:
-        path = os.getenv(f"GITLAB_REPO_{i}_PATH")
-        if not path:
-            break
-
-        branches_str = os.getenv(f"GITLAB_REPO_{i}_BRANCH", "")
-        branches = [b.strip() for b in branches_str.split(",") if b.strip()]
-        date_range = os.getenv(f"GITLAB_REPO_{i}_DATE_RANGE")
-
-        name = os.getenv(f"GITLAB_REPO_{i}_NAME", "")
-        configs.append(
-            {
-                "path": path,
-                "branches": branches,
-                "date_range": date_range,
-                "name": name,
-            }
-        )
-        i += 1
-    return configs
+# 忽略 asyncio 在 Windows 退出时的常见底层资源警告 (ProactorEventLoop 遗留问题)
+warnings.filterwarnings(
+    "ignore", category=RuntimeWarning, message=".*Event loop is closed.*"
+)
+warnings.filterwarnings("ignore", category=ResourceWarning)
 
 
 def print_raw_commits(commits, fake_items=None):
-    """按项目分组打印原始采集到的素材预览 (深度复刻 04-07 风格)"""
     if not commits and not fake_items:
         return
 
     log.info("")
     log.info("  平台: GITLAB")
-    
+
     # 1. 打印今日真实工作
     if commits:
         grouped_real = {}
@@ -60,10 +41,16 @@ def print_raw_commits(commits, fake_items=None):
                     time_str = "00:00"
                     try:
                         from datetime import datetime
-                        dt = datetime.fromisoformat(c.get("date", "").replace("Z", "+00:00"))
+
+                        dt = datetime.fromisoformat(
+                            c.get("date", "").replace("Z", "+00:00")
+                        )
                         time_str = dt.strftime("%H:%M")
-                    except: pass
-                    log.info(f"        - [{time_str}]({c.get('branch', 'unknown')}) {c.get('title', '')}")
+                    except:
+                        pass
+                    log.info(
+                        f"        - [{time_str}]({c.get('branch', 'unknown')}) {c.get('title', '')}"
+                    )
 
     # 2. 打印待伪装素材
     if fake_items:
@@ -84,11 +71,11 @@ def print_raw_commits(commits, fake_items=None):
 
 
 def print_polished_report(report_items):
-    """深度复刻 04-07 AI 润色报告样式 (2-4-8 缩进)"""
     if not report_items:
         return
 
     from datetime import datetime
+
     today = datetime.now().strftime("%Y-%m-%d")
 
     log.info(f"  📊 [每日工作总结-AI润色] (日期: {today})")
@@ -103,55 +90,45 @@ def print_polished_report(report_items):
         type_str = item.get("type", "编码")
         project = item.get("project", "核心")
 
-        details = f"🕒 {start}~{end} | {p_emoji} {priority} | 🏷️ {type_str} | 🏢 {project}"
+        details = (
+            f"🕒 {start}~{end} | {p_emoji} {priority} | 🏷️ {type_str} | 🏢 {project}"
+        )
         log.info(f"        └─ 详情: {details}")
         log.info("")
 
 
-async def run_daily_bot():
-    # 0. 环境初始化
-    log.info("🎬 [系统] 开始执行日报生成流水线...")
-    load_dotenv()
-    
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # 获取动态路径配置
-    extra_path = os.path.join(
-        current_dir, os.getenv("EXTRA_REPORT_PATH", "extra_report.txt")
-    )
-    prompt_path = os.path.normpath(
-        os.path.join(current_dir, "..", "references", "system_prompt.md")
-    )
-
-    # 1. 采集 GitLab 数据
+async def collect_data(repo_configs):
+    """步骤 1: 采集 GitLab 数据与飞书动态指令"""
     from gitlab_collector import GitLabCollector
+    from feishu_sender import FeishuSender
 
-    repo_configs = load_repo_configs()
     collector = GitLabCollector()
     commits = collector.run(repo_configs)
-    
-    # [伪装技能] 检查是否需要补全素材
+
+    # 1.3 伪装数据补全
+    camouflage_threshold = int(config.get("camouflage.threshold", 8))
     fake_items = []
-    # 阈值配置（可以后续移至 .env）
-    threshold = int(os.getenv("CAMOUFLAGE_THRESHOLD", "3"))
-    if len(commits) < threshold:
-        needed = threshold - len(commits)
+    if len(commits) < camouflage_threshold:
+        needed = camouflage_threshold - len(commits)
         fake_items = collector.generate_camouflage_data(
-            repo_configs, 
-            needed_count=needed,
-            lookback_days=int(os.getenv("CAMOUFLAGE_LOOKBACK", "14")),
-            cooldown_days=int(os.getenv("CAMOUFLAGE_COOLDOWN", "10"))
+            repo_configs,
+            needed,
+            lookback_days=int(config.get("camouflage.lookback", 14)),
+            cooldown_days=int(config.get("camouflage.cooldown", 10)),
         )
 
     print_raw_commits(commits, fake_items=fake_items)
 
     # 1.5 从飞书拉取额外补报
-    from feishu_sender import FeishuSender
     feishu = FeishuSender()
     log.info("📡 正在检查飞书实时指令...")
     feishu_extra = feishu.fetch_extra_work()
 
-    # 2. AI 润色处理
+    return commits, fake_items, feishu_extra
+
+
+async def polish_report(commits, fake_items, feishu_extra, extra_path, prompt_path):
+    """步骤 2: AI 润色处理"""
     from ai_processor import AIProcessor
 
     processor = AIProcessor()
@@ -160,19 +137,16 @@ async def run_daily_bot():
         extra_report_path=extra_path,
         system_prompt_path=prompt_path,
         fake_items=fake_items,
-        extra_report_items=feishu_extra
+        extra_report_items=feishu_extra,
     )
+    return report_items
 
-    if not report_items:
-        log.warning("⚠️ 提示: 没有生成任何日报条目，终止后续流程。")
-        return
 
-    print_polished_report(report_items)
-
-    # 3. 飞书发送
+async def send_to_feishu(report_items, fake_items):
+    """步骤 3: 飞书推送日报卡片"""
     from feishu_sender import FeishuSender
+
     feishu = FeishuSender()
-    
     feishu_enabled = (
         all([feishu.app_id, feishu.app_secret, feishu.target_chat_id])
         and "xxx" not in feishu.app_id
@@ -184,41 +158,88 @@ async def run_daily_bot():
         if feishu.send(card):
             # 只有发送成功才更新伪装素材使用记录
             if fake_items:
-                log.info(f"💾 [伪装] 任务成功，正在为 {len(fake_items)} 个素材更新记录...")
-                # 将整个 AI 润色结果作为变体参考记录
+                log.info(
+                    f"💾 [伪装] 任务成功，正在为 {len(fake_items)} 个素材更新记录..."
+                )
                 variant = json.dumps(report_items, ensure_ascii=False)
                 for item in fake_items:
                     camouflage_history_manager.update_usage(item, variant)
 
-    # 4. 企业微信 RPA 填报
+    return feishu, feishu_enabled
+
+
+async def fill_rpa(report_items, feishu, feishu_enabled):
+    """步骤 4: 企业微信 RPA 填报"""
     from wecom_rpa import WeComRPA
-    
+
     # 允许在 GH Actions 下运行 RPA，前提是配置了飞书以便推送二维码
     is_ci = os.getenv("GITHUB_ACTIONS") == "true"
     if is_ci and not feishu_enabled:
-        log.info("\nℹ️ 提示: 检测到 GitHub Actions 环境但未配置飞书推送，自动跳过 RPA 填报。")
+        log.info(
+            "\nℹ️ 提示: 检测到 GitHub Actions 环境但未配置飞书推送，自动跳过 RPA 填报。"
+        )
         return
 
     rpa = WeComRPA(feishu_sender=feishu if feishu_enabled else None)
-    if rpa.form_url:
-        log.info("\n🚀 正在启动企业微信 RPA 自动填报...")
-        # 从环境变量读取 HEADLESS 配置，默认 False（本地有头），CI 环境下通常为 True
-        is_headless = os.getenv("HEADLESS", "false").lower() == "true"
-        try:
-            await rpa.init_browser(headless=is_headless)
-            if await rpa.handle_login():
-                await rpa.fill_all(report_items)
-                if not is_headless:
-                    log.info("⏳ 填报完成，浏览器将保持开启 5 分钟以便人工核对。")
-                    await asyncio.sleep(300)
-                else:
-                    log.info("✨ 无头模式填报完成，直接退出。")
-        except Exception as e:
-            log.error(f"❌ RPA 填报环节发生异常: {e}")
-        finally:
-            await rpa.close()
-    else:
+    if not rpa.form_url:
         log.info("\nℹ️ 提示: 未配置 WECOM_FORM_URL，跳过 RPA 自动填报。")
+        return
+
+    log.info("\n🚀 正在启动企业微信 RPA 自动填报...")
+    is_headless = os.getenv("HEADLESS", "false").lower() == "true"
+    try:
+        await rpa.init_browser(headless=is_headless)
+        if await rpa.handle_login():
+            await rpa.fill_all(report_items)
+            if not is_headless:
+                log.info("⏳ 填报完成，浏览器将保持开启 5 分钟以便人工核对。")
+                await asyncio.sleep(300)
+            else:
+                log.info("✨ 无头模式填报完成，直接退出。")
+    except Exception as e:
+        err_msg = str(e)
+        if "Target page, context or browser has been closed" in err_msg:
+            log.info("\n👋 [RPA] 检测到浏览器窗口已手动关闭，正在退出流程。")
+        else:
+            log.error(f"❌ RPA 填报环节发生异常: {e}")
+    finally:
+        try:
+            await rpa.close()
+        except:
+            pass
+
+
+async def run_daily_bot():
+    """主编排逻辑"""
+    log.info("🎬 [系统] 开始执行日报生成流水线...")
+    load_dotenv()
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    extra_path_val = config.get("extra_report_path", "extra_report.txt")
+    extra_path = os.path.join(current_dir, extra_path_val)
+    prompt_path = os.path.normpath(
+        os.path.join(current_dir, "..", "references", "system_prompt.md")
+    )
+
+    # 1. 采集数据
+    commits, fake_items, feishu_extra = await collect_data(config.gitlab_repos)
+
+    # 2. AI 润色
+    report_items = await polish_report(
+        commits, fake_items, feishu_extra, extra_path, prompt_path
+    )
+
+    if not report_items:
+        log.warning("⚠️ 提示: 没有生成任何日报条目，终止后续流程。")
+        return
+
+    print_polished_report(report_items)
+
+    # 3. 飞书推送
+    feishu, feishu_enabled = await send_to_feishu(report_items, fake_items)
+
+    # 4. 企业微信 RPA
+    await fill_rpa(report_items, feishu, feishu_enabled)
 
 
 if __name__ == "__main__":
@@ -227,4 +248,9 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         log.warning("\n👋 用户终止运行。")
     except Exception as e:
-        log.error(f"\n❌ 程序非正常退出: {e}")
+        err_msg = str(e)
+        # 再次拦截可能冒泡到顶层的浏览器关闭错误
+        if "Target page, context or browser has been closed" in err_msg:
+            log.info("\n👋 任务已由用户手动关闭窗口结束。")
+        else:
+            log.error(f"\n❌ 程序非正常退出: {e}")

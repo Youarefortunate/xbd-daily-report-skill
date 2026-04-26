@@ -3,6 +3,7 @@ import json
 import httpx
 from openai import AsyncOpenAI
 from logger import log
+from config import config
 
 
 class AIProcessor:
@@ -16,26 +17,18 @@ class AIProcessor:
         :param model: 模型名称 (可选，默认从环境读取)
         """
         self.api_key = api_key or os.getenv("OPENAI_API_KEY", "")
-        self.base_url = base_url or os.getenv(
-            "OPENAI_BASE_URL", "https://api.openai.com/v1"
-        )
-        # 优先使用传入参数，其次环境
-        env_model = os.getenv("OPENAI_MODEL", "")
-        self.model = model or env_model
-        
-        if not env_model:
-            log.warning(f"⚠️ 警告: 未在环境中探测到 OPENAI_MODEL")
-        
+        self.base_url = base_url or config.get("openai.base_url", "https://api.openai.com/v1")
+        self.model = model or config.get("openai.model", "")
+
+        if not self.api_key:
+            log.warning("⚠️ 警告: 未在环境或配置中发现 OPENAI_API_KEY")
+
         # 显式初始化异步 httpx 客户端
         http_client = httpx.AsyncClient(
-            base_url=self.base_url,
-            follow_redirects=True,
-            timeout=60.0
+            base_url=self.base_url, follow_redirects=True, timeout=60.0
         )
         self.client = AsyncOpenAI(
-            api_key=self.api_key, 
-            base_url=self.base_url,
-            http_client=http_client
+            api_key=self.api_key, base_url=self.base_url, http_client=http_client
         )
 
     def _load_file_content(self, file_path: str) -> str:
@@ -108,14 +101,14 @@ class AIProcessor:
 
         # 2. 加载额外信息内容
         local_extra = self._load_file_content(extra_report_path)
-        
+
         # 合并本地文件与动态传入的内容
         merged_extra = []
         if local_extra:
             merged_extra.append(local_extra)
         if extra_report_items:
             merged_extra.extend(extra_report_items)
-            
+
         extra_content = "\n".join(merged_extra) if merged_extra else ""
 
         if extra_content:
@@ -130,7 +123,9 @@ class AIProcessor:
 
         # 边界检查
         if not git_commits and not extra_content and not fake_items:
-            log.warning("ℹ️ 提示: 未发现任何 Git 提交记录且离线补充/伪装素材为空，跳过润色。")
+            log.warning(
+                "ℹ️ 提示: 未发现任何 Git 提交记录且离线补充/伪装素材为空，跳过润色。"
+            )
             return []
 
         # 3. 用户输入拼接
@@ -141,17 +136,21 @@ class AIProcessor:
             # 按项目分组
             project_map = {}
             for c in git_commits:
-                p = f"{c['project']} ({c['project_name']})" if c.get('project_name') else c['project']
+                p = (
+                    f"{c['project']} ({c['project_name']})"
+                    if c.get("project_name")
+                    else c["project"]
+                )
                 project_map.setdefault(p, []).append(c)
-            
+
             for p, p_commits in project_map.items():
                 user_input += f"      数据源: {p}\n"
                 # 按日期分组
                 date_map = {}
                 for c in p_commits:
-                    d = c['date'][:10]
+                    d = c["date"][:10]
                     date_map.setdefault(d, []).append(c)
-                
+
                 for d in sorted(date_map.keys(), reverse=True):
                     user_input += f"        📅 日期: {d}\n"
                     for c in date_map[d]:
@@ -159,9 +158,13 @@ class AIProcessor:
                         time_str = "00:00"
                         try:
                             from datetime import datetime
-                            dt = datetime.fromisoformat(c.get("date", "").replace("Z", "+00:00"))
+
+                            dt = datetime.fromisoformat(
+                                c.get("date", "").replace("Z", "+00:00")
+                            )
                             time_str = dt.strftime("%H:%M")
-                        except: pass
+                        except:
+                            pass
                         user_input += f"          - [{time_str}] {c['title']}\n"
 
         if fake_items:
@@ -170,14 +173,14 @@ class AIProcessor:
             for item in fake_items:
                 p = f"{item.source} ({item.repo_path})"
                 source_map.setdefault(p, []).append(item)
-            
+
             for p, items in source_map.items():
                 user_input += f"      数据源: {p}\n"
                 date_map = {}
                 for item in items:
                     d = item.date or "未知日期"
                     date_map.setdefault(d, []).append(item)
-                
+
                 for d in sorted(date_map.keys(), reverse=True):
                     user_input += f"        📅 日期: {d}\n"
                     for item in date_map[d]:
