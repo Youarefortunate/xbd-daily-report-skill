@@ -1,0 +1,64 @@
+{
+    "2026-04-27": {
+        "c747bc3a93a424c5b856f2f6650b050d14bb3df6": {
+            "last_used": "2026-04-27",
+            "variants": [
+                "[{\"date\": \"2026-04-23\", \"content\": \"优化农融易小程序首页产品列表展示逻辑，优化交互体验\", \"result\": \"完成首页交互优化及功能调整\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-23\", \"content\": \"增强村财后台预警监督模块，修复跳转时筛选状态异常问题\", \"result\": \"完成预警筛选异常修复及分工优化\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-04-23\", \"content\": \"维护村财后台代码，调整部分计算逻辑与导出流程\", \"result\": \"实现前后端合理分工及流程优化\", \"start_time\": \"13:30\", \"end_"
+            ],
+            "content": "chore: 更新小程序TS底层基础库版本",
+            "source_name": "农融易小程序",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-mini",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-13"
+        },
+        "641c4ab2d0e144be6010bf0951e34ff65214373b": {
+            "last_used": "2026-04-27",
+            "variants": [
+                "[{\"date\": \"2026-04-23\", \"content\": \"优化农融易小程序首页产品列表展示逻辑，优化交互体验\", \"result\": \"完成首页交互优化及功能调整\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-23\", \"content\": \"增强村财后台预警监督模块，修复跳转时筛选状态异常问题\", \"result\": \"完成预警筛选异常修复及分工优化\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-04-23\", \"content\": \"维护村财后台代码，调整部分计算逻辑与导出流程\", \"result\": \"实现前后端合理分工及流程优化\", \"start_time\": \"13:30\", \"end_"
+            ],
+            "content": "fix(预警监督): 修复工作台跳转时关闭状态筛选问题",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-17"
+        },
+        "187b818101c960f52d968fea629353b299dd6964": {
+            "last_used": "2026-04-27",
+            "variants": [
+                "[{\"date\": \"2026-04-23\", \"content\": \"优化农融易小程序首页产品列表展示逻辑，优化交互体验\", \"result\": \"完成首页交互优化及功能调整\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-23\", \"content\": \"增强村财后台预警监督模块，修复跳转时筛选状态异常问题\", \"result\": \"完成预警筛选异常修复及分工优化\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-04-23\", \"content\": \"维护村财后台代码，调整部分计算逻辑与导出流程\", \"result\": \"实现前后端合理分工及流程优化\", \"start_time\": \"13:30\", \"end_"
+            ],
+            "content": "refactor(首页): 重构产品列表展示方式，移除滑动切换功能",
+            "source_name": "农融易小程序",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-mini",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-23"
+        },
+        "9c516d4bbe14ad48a791319a905d8bd4097ce476": {
+            "last_used": "2026-04-27",
+            "variants": [
+                "[{\"date\": \"2026-04-23\", \"content\": \"优化农融易小程序首页产品列表展示逻辑，优化交互体验\", \"result\": \"完成首页交互优化及功能调整\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-23\", \"content\": \"增强村财后台预警监督模块，修复跳转时筛选状态异常问题\", \"result\": \"完成预警筛选异常修复及分工优化\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-04-23\", \"content\": \"维护村财后台代码，调整部分计算逻辑与导出流程\", \"result\": \"实现前后端合理分工及流程优化\", \"start_time\": \"13:30\", \"end_"
+            ],
+            "content": "chore: 扩展微信小程序官方getApp方法类型提示",
+            "source_name": "农融易小程序",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-mini",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-13"
+        },
+        "4129a8fa53758ab43a444ee8c3debbb486a82272": {
+            "last_used": "2026-04-27",
+            "variants": [
+                "[{\"date\": \"2026-04-23\", \"content\": \"优化农融易小程序首页产品列表展示逻辑，优化交互体验\", \"result\": \"完成首页交互优化及功能调整\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-23\", \"content\": \"增强村财后台预警监督模块，修复跳转时筛选状态异常问题\", \"result\": \"完成预警筛选异常修复及分工优化\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-04-23\", \"content\": \"维护村财后台代码，调整部分计算逻辑与导出流程\", \"result\": \"实现前后端合理分工及流程优化\", \"start_time\": \"13:30\", \"end_"
+            ],
+            "content": "chore: 预警-还原部分字段计算、格式化交由后端计算导出",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-17"
+        }
+    }
+}
