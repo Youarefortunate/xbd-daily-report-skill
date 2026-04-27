@@ -85,9 +85,18 @@ class WeComRPA:
                 "--disable-blink-features=AutomationControlled",
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",  # 关键：防止 Linux CI 环境下 /dev/shm 空间不足导致页面挂死
+                "--disable-gpu",            # 无头模式下通常建议禁用 GPU 加速以减少资源冲突
             ],
             "viewport": {"width": 1280, "height": 800},
         }
+
+        # 伪装标准 Chrome User-Agent，移除 HeadlessChrome 标识
+        is_headless = headless
+        if is_headless:
+            ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            launch_params["user_agent"] = ua
+            log.info(f"🕵️ [RPA] 已启用 User-Agent 伪装: {ua[:50]}...")
 
         # CI 环境直接使用 Playwright 默认渠道，避免在 Ubuntu 上寻找 Windows 路径
         exec_path = None if is_ci else await self._get_executable_path()
@@ -104,17 +113,42 @@ class WeComRPA:
         )
 
         self.page = await self.browser_context.new_page()
-        # 注入反检测脚本
-        await self.page.add_init_script(
-            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-        )
+        # 注入多重反检测脚本，绕过常规浏览器特征检测
+        await self.page.add_init_script("""
+            // 1. 移除 webdriver 标记
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            // 2. 伪造 chrome 运行对象
+            window.chrome = { runtime: {} };
+            // 3. 固化语言和平台属性
+            Object.defineProperty(navigator, 'languages', {get: () => ['zh-CN', 'zh', 'en']});
+            Object.defineProperty(navigator, 'platform', {get: () => 'Win32'});
+            // 4. 伪装 WebGL 渲染器信息 (常见检测点)
+            const getParameter = WebGLRenderingContext.prototype.getParameter;
+            WebGLRenderingContext.prototype.getParameter = function(parameter) {
+                if (parameter === 37445) return 'Intel Inc.';
+                if (parameter === 37446) return 'Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0';
+                return getParameter.apply(this, arguments);
+            };
+        """)
         log.info("✅ [RPA] 浏览器启动成功。")
 
     async def handle_login(self) -> bool:
-        """登录检测逻辑"""
-        log.info(f"🚀 正在访问表单: {self.form_url}")
-        # 使用 load 策略，避免 networkidle 在某些网络下无限期等待
-        await self.page.goto(self.form_url, wait_until="load", timeout=60000)
+        """登录检测与表单访问逻辑"""
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            try:
+                log.info(f"🚀 正在访问表单 {'(重试中...)' if attempt > 0 else ''}: {self.form_url}")
+                # 调整为 domcontentloaded 提高在 CI 中的成功率，随后再等待关键元素
+                await self.page.goto(self.form_url, wait_until="domcontentloaded", timeout=90000)
+                break
+            except Exception as e:
+                if attempt < max_retries:
+                    log.warning(f"⚠️ 访问超时，正在进行第 {attempt + 1} 次重试... ({e})")
+                    await asyncio.sleep(5)
+                    continue
+                else:
+                    log.error(f"❌ 访问表单最终失败: {e}")
+                    raise
 
         await self._human_sleep(2)
 
