@@ -59,6 +59,42 @@
             "platform": "GitLab",
             "author": "liangan",
             "original_date": "2026-04-17"
+        },
+        "858c844897199da71dbacf9b0cbb53b058808f8b": {
+            "last_used": "2026-04-27",
+            "variants": [
+                "[{\"date\": \"2026-04-27\", \"content\": \"重构农融易首页组件，替换为base-tabs并优化样式\", \"result\": \"首页组件优化完成，样式更统一\", \"start_time\": \"13:30\", \"end_time\": \"15:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-27\", \"content\": \"优化base-tabs组件的文档说明\", \"result\": \"组件文档补充完善，可读性提升\", \"start_time\": \"15:30\", \"end_time\": \"16:15\", \"priority\": \"不重要、不紧急\", \"type\": \"文档编写\", \"project\": \"农融易\"}, {\"date\": \"2026-04-27\", \"content\": \"优化监管平台预警监督下钻组织ID逻辑\", \"result\": \"下钻组织ID参数适配，流程更顺畅\", \"start_time\": \"16:15\", \"end_time\": "
+            ],
+            "content": "fix(预警监督): 高频签约-下钻到最后一级时携带参数combinationKeyCode",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-18"
+        },
+        "c082296d7c3ee45085ad76f2c8c55df876e0e04a": {
+            "last_used": "2026-04-27",
+            "variants": [
+                "[{\"date\": \"2026-04-27\", \"content\": \"重构农融易首页组件，替换为base-tabs并优化样式\", \"result\": \"首页组件优化完成，样式更统一\", \"start_time\": \"13:30\", \"end_time\": \"15:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-27\", \"content\": \"优化base-tabs组件的文档说明\", \"result\": \"组件文档补充完善，可读性提升\", \"start_time\": \"15:30\", \"end_time\": \"16:15\", \"priority\": \"不重要、不紧急\", \"type\": \"文档编写\", \"project\": \"农融易\"}, {\"date\": \"2026-04-27\", \"content\": \"优化监管平台预警监督下钻组织ID逻辑\", \"result\": \"下钻组织ID参数适配，流程更顺畅\", \"start_time\": \"16:15\", \"end_time\": "
+            ],
+            "content": "chore(预警监督): 根据后端要求修改高频签约对象下钻时的组织ID",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-22"
+        },
+        "b9613f5062a68e06fcf6aa2c381bddb92890a836": {
+            "last_used": "2026-04-27",
+            "variants": [
+                "[{\"date\": \"2026-04-27\", \"content\": \"重构农融易首页组件，替换为base-tabs并优化样式\", \"result\": \"首页组件优化完成，样式更统一\", \"start_time\": \"13:30\", \"end_time\": \"15:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-27\", \"content\": \"优化base-tabs组件的文档说明\", \"result\": \"组件文档补充完善，可读性提升\", \"start_time\": \"15:30\", \"end_time\": \"16:15\", \"priority\": \"不重要、不紧急\", \"type\": \"文档编写\", \"project\": \"农融易\"}, {\"date\": \"2026-04-27\", \"content\": \"优化监管平台预警监督下钻组织ID逻辑\", \"result\": \"下钻组织ID参数适配，流程更顺畅\", \"start_time\": \"16:15\", \"end_time\": "
+            ],
+            "content": "refactor: 获取公司信息、实名认证hook重构为TS",
+            "source_name": "农融易小程序",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-mini",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-13"
         }
     }
 }
