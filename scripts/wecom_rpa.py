@@ -71,7 +71,9 @@ class WeComRPA:
         # 但我们现在支持通过 XVFB 运行有头模式，所以移除强制 True 逻辑
         is_ci = os.getenv("GITHUB_ACTIONS") == "true"
         if is_ci and os.getenv("HEADLESS") != "false":
-            log.info("🚀 [RPA] 检测到 GitHub Actions 环境且未指定 Headful，默认启用无头模式。")
+            log.info(
+                "🚀 [RPA] 检测到 GitHub Actions 环境且未指定 Headful，默认启用无头模式。"
+            )
             headless = True
 
         log.info(f"🌐 [RPA] 正在初始化浏览器引擎 (Headless={headless})...")
@@ -87,7 +89,7 @@ class WeComRPA:
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
                 "--disable-dev-shm-usage",  # 关键：防止 Linux CI 环境下 /dev/shm 空间不足导致页面挂死
-                "--disable-gpu",            # 无头模式下通常建议禁用 GPU 加速以减少资源冲突
+                "--disable-gpu",  # 无头模式下通常建议禁用 GPU 加速以减少资源冲突
             ],
             "viewport": {"width": 1280, "height": 800},
         }
@@ -121,7 +123,8 @@ class WeComRPA:
         self.page.set_default_timeout(90000)
 
         # 注入多重反检测脚本，绕过常规浏览器特征检测
-        await self.page.add_init_script("""
+        await self.page.add_init_script(
+            """
             // 1. 移除 webdriver 标记
             Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
             // 2. 伪造 chrome 运行对象
@@ -135,9 +138,64 @@ class WeComRPA:
                 if (parameter === 37445) return 'Intel Inc.';
                 if (parameter === 37446) return 'Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0';
                 return getParameter.apply(this, arguments);
-            };
-        """)
+            }; 
+        """
+        )
         log.info("✅ [RPA] 浏览器启动成功。")
+
+    async def check_health(self) -> bool:
+        """
+        环境预检：检查是否可以正常访问填报页且已登录
+        :return: True 如果一切正常, False 如果需要登录或页面不可用
+        """
+        if not self.form_url:
+            log.warning("⚠️ 未配置 WECOM_FORM_URL，跳过预检。")
+            return True
+
+        try:
+            log.info(f"🔍 [RPA 预检] 正在尝试访问填报页: {self.form_url}")
+            # 预检阶段使用较短的超时
+            await self.page.goto(
+                self.form_url, wait_until="domcontentloaded", timeout=30000
+            )
+            await asyncio.sleep(2)
+
+            # 1. 检查是否出现登录组件
+            qr_selectors = [
+                ".dui-snackbar-container.login-dialog",
+                ".login-dialog",
+                ".wwLogin_panel_middle .wwLogin_qrcode",
+                "#login_frame",
+                "iframe[src*='login']",
+            ]
+
+            for sel in qr_selectors:
+                if await self.page.query_selector(sel):
+                    log.error(
+                        f"❌ [RPA 预检] 检测到登录组件 ({sel})，当前处于未登录状态。"
+                    )
+                    return False
+
+            # 2. 检查关键填报元素是否存在
+            # .HoverBtn_btn__2ansF 是报表的悬浮填报按钮
+            target_selector = ".HoverBtn_btn__2ansF"
+            if await self.page.query_selector(target_selector):
+                log.info("✅ [RPA 预检] 成功进入填报页面，环境正常。")
+                return True
+
+            # 3. 兜底逻辑：如果既没有登录框，也没有填报按钮，可能是页面加载不完整
+            log.warning("⚠️ [RPA 预检] 未能检测到填报按钮，尝试等待 5 秒...")
+            try:
+                await self.page.wait_for_selector(target_selector, timeout=5000)
+                log.info("✅ [RPA 预检] 经过等待，填报按钮已出现。")
+                return True
+            except:
+                log.error("❌ [RPA 预检] 页面加载异常或结构已变动。")
+                return False
+
+        except Exception as e:
+            log.error(f"❌ [RPA 预检] 访问发生异常: {e}")
+            return False
 
     async def handle_login(self) -> bool:
         """登录检测与表单访问逻辑"""
@@ -145,9 +203,13 @@ class WeComRPA:
         max_retries = 2
         for attempt in range(max_retries + 1):
             try:
-                log.info(f"🚀 正在访问表单 {'(重试中...)' if attempt > 0 else ''}: {self.form_url}")
+                log.info(
+                    f"🚀 正在访问表单 {'(重试中...)' if attempt > 0 else ''}: {self.form_url}"
+                )
                 # 调整为 domcontentloaded 提高在 CI 中的成功率，随后再等待关键元素
-                await self.page.goto(self.form_url, wait_until="domcontentloaded", timeout=90000)
+                await self.page.goto(
+                    self.form_url, wait_until="domcontentloaded", timeout=90000
+                )
                 break
             except Exception as e:
                 if attempt < max_retries:
@@ -167,6 +229,7 @@ class WeComRPA:
             ".login-dialog",
             ".wwLogin_panel_middle .wwLogin_qrcode",
             "#login_frame",
+            "iframe[src*='login']",
         ]
 
         target_element = None
@@ -251,15 +314,21 @@ class WeComRPA:
             log.info("🎯 已进入填报页面，环境准备就绪。")
             return True
         except Exception as e:
-            error_img = os.path.join(os.path.dirname(self.user_data_dir), "error_page.png")
+            error_img = os.path.join(
+                os.path.dirname(self.user_data_dir), "error_page.png"
+            )
             await self.page.screenshot(path=error_img)
-            log.error(f"❌ 未能检测到填报页关键元素: {e}，已保存错误截图至: {error_img}")
+            log.error(
+                f"❌ 未能检测到填报页关键元素: {e}，已保存错误截图至: {error_img}"
+            )
             # [GA] 在 Action 环境下，如果推送了飞书，可以把这张图也推过去方便调试
             if self.feishu_sender and os.getenv("GITHUB_ACTIONS") == "true":
                 try:
                     img_key = self.feishu_sender.upload_image(error_img)
                     if img_key:
-                        self.feishu_sender.send_text(f"🚨 RPA 填报页加载失败，请检查截图 (Timeout 90s)\nError: {e}")
+                        self.feishu_sender.send_text(
+                            f"🚨 RPA 填报页加载失败，请检查截图 (Timeout 90s)\nError: {e}"
+                        )
                 except:
                     pass
             return False

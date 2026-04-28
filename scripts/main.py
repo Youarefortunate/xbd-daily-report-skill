@@ -116,6 +116,42 @@ async def is_github_actions_environment() -> bool:
     return True
 
 
+async def rpa_health_check():
+    """步骤 0.5: RPA 环境预检 (提前启动浏览器检查)"""
+    from wecom_rpa import WeComRPA
+    from feishu_sender import FeishuSender
+
+    feishu = FeishuSender()
+    # 临时检查是否启用飞书，用于 RPA 推送二维码
+    feishu_enabled = (
+        all([feishu.app_id, feishu.app_secret, feishu.target_chat_id])
+        and "xxx" not in feishu.app_id
+    )
+
+    rpa = WeComRPA(feishu_sender=feishu if feishu_enabled else None)
+    is_headless = os.getenv("HEADLESS", "false").lower() == "true"
+
+    if rpa.form_url:
+        log.info("🔍 [预检] 正在进行 RPA 运行环境检查...")
+        try:
+            await rpa.init_browser(headless=is_headless)
+            if not await rpa.check_health():
+                log.error(
+                    "❌ [预检] RPA 环境异常（可能未登录或页面不可用），已提前终止流程以节省资源。"
+                )
+                await rpa.close()
+                return None, None, False
+        except Exception as e:
+            log.error(f"❌ [预检] RPA 初始化失败: {e}，流程终止。")
+            await rpa.close()
+            return None, None, False
+    else:
+        log.info("ℹ️ 未配置 WECOM_FORM_URL，跳过 RPA 预检。")
+        rpa = None
+
+    return rpa, feishu, feishu_enabled
+
+
 async def collect_data(repo_configs):
     """步骤 1: 采集 GitLab 数据与飞书动态指令"""
     from gitlab_collector import GitLabCollector
@@ -161,11 +197,13 @@ async def polish_report(commits, fake_items, feishu_extra, extra_path, prompt_pa
     return report_items
 
 
-async def send_to_feishu(report_items, fake_items):
+async def send_to_feishu(report_items, fake_items, feishu=None):
     """步骤 3: 飞书推送日报卡片"""
     from feishu_sender import FeishuSender
 
-    feishu = FeishuSender()
+    if not feishu:
+        feishu = FeishuSender()
+    
     feishu_enabled = (
         all([feishu.app_id, feishu.app_secret, feishu.target_chat_id])
         and "xxx" not in feishu.app_id
@@ -187,7 +225,7 @@ async def send_to_feishu(report_items, fake_items):
     return feishu, feishu_enabled
 
 
-async def fill_rpa(report_items, feishu, feishu_enabled):
+async def fill_rpa(report_items, feishu, feishu_enabled, rpa=None):
     """步骤 4: 企业微信 RPA 填报"""
     from wecom_rpa import WeComRPA
 
@@ -199,7 +237,10 @@ async def fill_rpa(report_items, feishu, feishu_enabled):
         )
         return
 
-    rpa = WeComRPA(feishu_sender=feishu if feishu_enabled else None)
+    # 如果没有传入预检好的 rpa 对象，则在此初始化
+    if not rpa:
+        rpa = WeComRPA(feishu_sender=feishu if feishu_enabled else None)
+
     if not rpa.form_url:
         log.info("\nℹ️ 提示: 未配置 WECOM_FORM_URL，跳过 RPA 自动填报。")
         return
@@ -207,7 +248,10 @@ async def fill_rpa(report_items, feishu, feishu_enabled):
     log.info("\n🚀 正在启动企业微信 RPA 自动填报...")
     is_headless = os.getenv("HEADLESS", "false").lower() == "true"
     try:
-        await rpa.init_browser(headless=is_headless)
+        # 如果 rpa 已经初始化过（通过预检），则跳过 init_browser
+        if not rpa.page:
+            await rpa.init_browser(headless=is_headless)
+
         if await rpa.handle_login():
             await rpa.fill_all(report_items)
             if not is_headless:
@@ -244,6 +288,12 @@ async def run_daily_bot():
         os.path.join(current_dir, "..", "references", "system_prompt.md")
     )
 
+    # 0.5 RPA 环境预检
+    rpa, feishu, feishu_enabled = await rpa_health_check()
+    if rpa is None and config.get("wecom.form_url"):
+        # 如果配置了 URL 但返回 None，说明预检失败已处理
+        return
+
     # 1. 采集数据
     commits, fake_items, feishu_extra = await collect_data(config.gitlab_repos)
 
@@ -254,15 +304,16 @@ async def run_daily_bot():
 
     if not report_items:
         log.warning("⚠️ 提示: 没有生成任何日报条目，终止后续流程。")
+        if rpa: await rpa.close()
         return
 
     print_polished_report(report_items)
 
     # 3. 飞书推送
-    feishu, feishu_enabled = await send_to_feishu(report_items, fake_items)
+    feishu, feishu_enabled = await send_to_feishu(report_items, fake_items, feishu=feishu)
 
     # 4. 企业微信 RPA
-    await fill_rpa(report_items, feishu, feishu_enabled)
+    await fill_rpa(report_items, feishu, feishu_enabled, rpa=rpa)
 
 
 if __name__ == "__main__":
