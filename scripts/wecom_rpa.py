@@ -92,6 +92,8 @@ class WeComRPA:
                 "--disable-gpu",  # 无头模式下通常建议禁用 GPU 加速以减少资源冲突
             ],
             "viewport": {"width": 1280, "height": 800},
+            "locale": "zh-CN",
+            "timezone_id": "Asia/Shanghai",
         }
 
         # 伪装标准 Chrome User-Agent，移除 HeadlessChrome 标识
@@ -317,17 +319,23 @@ class WeComRPA:
             error_img = os.path.join(
                 os.path.dirname(self.user_data_dir), "error_page.png"
             )
-            await self.page.screenshot(path=error_img)
-            log.error(
-                f"❌ 未能检测到填报页关键元素: {e}，已保存错误截图至: {error_img}"
-            )
+            await self.page.screenshot(path=error_img, full_page=True)
+            
+            # [GA] 记录当前 URL 和 标题，帮助分析是否被重定向到了异常页面
+            current_url = self.page.url
+            current_title = await self.page.title()
+            log.error(f"❌ 未能检测到填报页关键元素: {e}")
+            log.error(f"📍 失败时 URL: {current_url}")
+            log.error(f"🏷️ 失败时标题: {current_title}")
+            log.info(f"📸 已保存错误全屏截图至: {error_img}")
+
             # [GA] 在 Action 环境下，如果推送了飞书，可以把这张图也推过去方便调试
             if self.feishu_sender and os.getenv("GITHUB_ACTIONS") == "true":
                 try:
                     img_key = self.feishu_sender.upload_image(error_img)
                     if img_key:
                         self.feishu_sender.send_text(
-                            f"🚨 RPA 填报页加载失败，请检查截图 (Timeout 90s)\nError: {e}"
+                            f"🚨 RPA 填报页加载失败\nURL: {current_url}\nTitle: {current_title}\nError: {e}"
                         )
                 except:
                     pass

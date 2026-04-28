@@ -28,7 +28,17 @@ jobs:
             python -m pip install --upgrade pip
             pip install -r scripts/requirements.txt
             python -m playwright install --with-deps chromium
-            sudo apt-get install -y xvfb
+            # 安装中文字体，防止页面渲染乱码导致元素无法定位
+            sudo apt-get update
+            sudo apt-get install -y xvfb fonts-noto-cjk
+            
+      - name: Cache Browser Profile
+        uses: actions/cache@v4
+        with:
+          path: scripts/.browser_profiles
+          key: ${{ runner.os }}-wecom-browser-${{ hashFiles('scripts/wecom_rpa.py') }}
+          restore-keys: |
+            ${{ runner.os }}-wecom-browser-
 
       - name: Run Daily Bot
         env:
