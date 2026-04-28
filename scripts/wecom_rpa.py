@@ -252,16 +252,17 @@ class WeComRPA:
             
             if self.feishu_sender and (is_headless or is_ci):
                 try:
-                    # 等待一下确保 iframe 内部也加载出来（二维码渲染需要时间）
+                    # 等待一下确保基础渲染完成
+                    await self.page.wait_for_load_state("domcontentloaded")
                     await asyncio.sleep(3)
 
                     qr_path = os.path.join(
                         os.path.dirname(self.user_data_dir), "login_qr.png"
                     )
                     log.info(f"📸 [Headless] 正在截取全页面并推送到飞书: {qr_path}")
-                    # 改用全页面截图，避免针对特定元素截图在 CI 环境下的性能问题
+                    # 进一步延长超时并确保不阻塞
                     await self.page.screenshot(
-                        path=qr_path, timeout=30000, full_page=False
+                        path=qr_path, timeout=60000, full_page=False
                     )
 
                     image_key = self.feishu_sender.upload_image(qr_path)
@@ -269,10 +270,14 @@ class WeComRPA:
                         self.feishu_sender.send_qr_code(
                             image_key, title="🔑 企业微信场景登录"
                         )
+                    else:
+                        log.error("❌ [RPA] 二维码上传失败，流程终止。")
+                        return False
                 except Exception as e:
-                    log.error(f"❌ 飞书二维码推送失败: {e}")
+                    log.error(f"❌ [RPA] 飞书二维码推送失败 (将终止流程): {e}")
+                    return False
                 finally:
-                    # 统一清理临时二维码图片（唯一出口）
+                    # 统一清理临时二维码图片
                     if os.path.exists(qr_path):
                         try:
                             os.remove(qr_path)
