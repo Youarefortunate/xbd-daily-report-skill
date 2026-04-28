@@ -259,8 +259,10 @@ class WeComRPA:
                         os.path.dirname(self.user_data_dir), "login_qr.png"
                     )
                     log.info(f"📸 [Headless] 正在截取登录组件并推送到飞书: {qr_path}")
-                    # 设置较短的截图超时并忽略动画等待
-                    await target_element.screenshot(path=qr_path, timeout=10000)
+                    # 增加超时时间并禁用动画，提高 CI 环境下的截图成功率
+                    await target_element.screenshot(
+                        path=qr_path, timeout=30000, animations="disabled"
+                    )
 
                     image_key = self.feishu_sender.upload_image(qr_path)
                     if image_key:
