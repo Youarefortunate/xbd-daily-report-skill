@@ -33,8 +33,8 @@ class WeComRPA:
         self.page = None
         self.playwright = None
 
-        # 模拟运行速度 (0.1~1.0, 越小越快, 默认 0.6)
-        self.speed_val = float(config.get("rpa.speed", 0.6))
+        # 模拟运行速度 (0.1~1.0, 越小越快, 默认 1)
+        self.speed_val = float(config.get("rpa.speed", 1))
         # 登录超时时间
         self.login_timeout = int(config.get("rpa.login_timeout", 60))
 
@@ -98,15 +98,17 @@ class WeComRPA:
             launch_params["user_agent"] = ua
             log.info(f"🕵️ [RPA] 已启用 User-Agent 伪装: {ua[:50]}...")
 
-        # CI 环境直接使用 Playwright 默认渠道，避免在 Ubuntu 上寻找 Windows 路径
-        exec_path = None if is_ci else await self._get_executable_path()
-        if exec_path:
-            launch_params["executable_path"] = exec_path
+        # CI 环境策略：不显式指定 channel="chrome"，除非确定环境中有 Google Chrome
+        # GitHub Actions 的 ubuntu-latest 通常带有 Chrome，但使用默认的 chromium 更稳。
+        if is_ci:
+            log.info("ℹ️ 处于 CI 环境，将直接启动 Playwright 默认浏览器...")
         else:
-            log.info(
-                "ℹ️ 未发现本地 Chrome 或处于 CI 环境，将使用 Playwright 默认渠道..."
-            )
-            launch_params["channel"] = "chrome"
+            exec_path = await self._get_executable_path()
+            if exec_path:
+                launch_params["executable_path"] = exec_path
+            else:
+                log.info("ℹ️ 未发现本地 Chrome，将通过 Playwright 渠道启动...")
+                launch_params["channel"] = "chrome"
 
         self.browser_context = await self.playwright.chromium.launch_persistent_context(
             **launch_params
@@ -134,6 +136,7 @@ class WeComRPA:
 
     async def handle_login(self) -> bool:
         """登录检测与表单访问逻辑"""
+        qr_path = os.path.join(os.path.dirname(self.user_data_dir), "login_qr.png")
         max_retries = 2
         for attempt in range(max_retries + 1):
             try:
@@ -237,9 +240,24 @@ class WeComRPA:
 
         # 验证是否进入填报页
         await self._human_sleep(3)  # 给予页面跳转和动态渲染额外缓冲
-        await self.page.wait_for_selector(".HoverBtn_btn__2ansF", timeout=60000)
-        log.info("🎯 已进入填报页面，环境准备就绪。")
-        return True
+        try:
+            # 增加超时时间到 90s，并提供失败截图
+            await self.page.wait_for_selector(".HoverBtn_btn__2ansF", timeout=90000)
+            log.info("🎯 已进入填报页面，环境准备就绪。")
+            return True
+        except Exception as e:
+            error_img = os.path.join(os.path.dirname(self.user_data_dir), "error_page.png")
+            await self.page.screenshot(path=error_img)
+            log.error(f"❌ 未能检测到填报页关键元素: {e}，已保存错误截图至: {error_img}")
+            # [GA] 在 Action 环境下，如果推送了飞书，可以把这张图也推过去方便调试
+            if self.feishu_sender and os.getenv("GITHUB_ACTIONS") == "true":
+                try:
+                    img_key = self.feishu_sender.upload_image(error_img)
+                    if img_key:
+                        self.feishu_sender.send_text(f"🚨 RPA 填报页加载失败，请检查截图 (Timeout 90s)\nError: {e}")
+                except:
+                    pass
+            return False
 
     async def _trigger_modal(self):
         """触发填报模态框 (模仿人类点击路径)"""
