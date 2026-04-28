@@ -9,7 +9,7 @@ on:
 
 jobs:
   run-bot:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: write # 允许回写 Git 仓库
 
