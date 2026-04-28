@@ -259,11 +259,47 @@ class WeComRPA:
                     qr_path = os.path.join(
                         os.path.dirname(self.user_data_dir), "login_qr.png"
                     )
-                    log.info(f"📸 [Headless] 正在截取全页面并推送到飞书: {qr_path}")
-                    # 进一步延长超时并确保不阻塞
-                    await self.page.screenshot(
-                        path=qr_path, timeout=60000, full_page=False
-                    )
+                    
+                    # --- 优化：尝试直接从 DOM 中提取二维码图片数据，避开耗时的截图逻辑 ---
+                    log.info("🔍 [RPA] 正在尝试从页面 DOM 中提取二维码数据...")
+                    qr_data = await self.page.evaluate("""
+                        (selectors) => {
+                            function findImg(root) {
+                                for (const sel of selectors) {
+                                    const el = root.querySelector(sel);
+                                    if (!el) continue;
+                                    const img = el.tagName === 'IMG' ? el : el.querySelector('img');
+                                    if (img && img.src && img.src.length > 100) return img.src;
+                                }
+                                return null;
+                            }
+                            // 1. 根页面搜索
+                            let src = findImg(document);
+                            if (src) return src;
+                            // 2. Iframe 搜索 (跨域可能受限，但先尝试)
+                            for (const frame of document.querySelectorAll('iframe')) {
+                                try {
+                                    src = findImg(frame.contentDocument || frame.contentWindow.document);
+                                    if (src) return src;
+                                } catch(e) {}
+                            }
+                            return null;
+                        }
+                    """, qr_selectors)
+
+                    if qr_data and qr_data.startswith("data:image"):
+                        # 处理 Base64 格式
+                        import base64
+                        header, encoded = qr_data.split(",", 1)
+                        with open(qr_path, "wb") as f:
+                            f.write(base64.b64decode(encoded))
+                        log.info("✅ [RPA] 成功通过 Base64 提取二维码。")
+                    else:
+                        # 如果提取失败，最后尝试一次快速截图 (不带动画)
+                        log.info(f"📸 [RPA] 提取失败，改用全页面截图策略: {qr_path}")
+                        await self.page.screenshot(
+                            path=qr_path, timeout=30000, full_page=False, animations="disabled"
+                        )
 
                     image_key = self.feishu_sender.upload_image(qr_path)
                     if image_key:
