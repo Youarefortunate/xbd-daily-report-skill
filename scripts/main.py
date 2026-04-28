@@ -135,9 +135,10 @@ async def rpa_health_check():
         log.info("🔍 [预检] 正在进行 RPA 运行环境检查...")
         try:
             await rpa.init_browser(headless=is_headless)
-            if not await rpa.check_health():
+            # handle_login 会检测是否需要扫码，并在 CI 环境下推送到飞书
+            if not await rpa.handle_login():
                 log.error(
-                    "❌ [预检] RPA 环境异常（可能未登录或页面不可用），已提前终止流程以节省资源。"
+                    "❌ [预检] RPA 环境异常（扫码超时或页面不可用），已提前终止流程以节省资源。"
                 )
                 await rpa.close()
                 return None, None, False

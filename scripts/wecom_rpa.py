@@ -244,11 +244,13 @@ class WeComRPA:
         if target_element:
             log.warning("🔑 检测到登录入口，请查看飞书推送的二维码并扫码登录！")
 
-            # [GA 适配] 仅在无头模式下推送到飞书，有头模式用户可以直接在浏览器扫码
+            # [GA 适配] 在 CI 环境下（即便开启了 XVFB 有头模式），也需要推送到飞书，因为人工无法直接看到屏幕
             is_headless = getattr(self.browser_context, "_options", {}).get(
                 "headless", False
             )
-            if self.feishu_sender and is_headless:
+            is_ci = os.getenv("GITHUB_ACTIONS") == "true"
+            
+            if self.feishu_sender and (is_headless or is_ci):
                 try:
                     # 等待一下确保 iframe 内部也加载出来（二维码渲染需要时间）
                     await asyncio.sleep(3)
