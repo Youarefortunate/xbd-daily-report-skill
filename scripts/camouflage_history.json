@@ -205,6 +205,42 @@
             "platform": "GitLab",
             "author": "liangan",
             "original_date": "2026-04-17"
+        },
+        "fe6b9a1bc1a91091e02001e9079a172f3d90c44d": {
+            "last_used": "2026-04-28",
+            "variants": [
+                "[{\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序弹窗组件头部布局，完善关闭按钮交互逻辑\", \"result\": \"弹窗组件交互体验已优化\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"不重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"更新农融易小程序协议弹窗样式，调整重点内容标识方式\", \"result\": \"协议展示更清晰规范\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"不重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"调整村财后台管理系统行权大屏顶部标题栏左侧内边距\", \"result\": \"大屏标题视觉布局更协调\", \"start_time\": \"13:30\", \"end_time\": \""
+            ],
+            "content": "feat(地图组件): 添加各地区屏幕数据显示功能",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-21"
+        },
+        "462b146d37eb34dfe9ac75c5a541ffd665749d8f": {
+            "last_used": "2026-04-28",
+            "variants": [
+                "[{\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序弹窗组件头部布局，完善关闭按钮交互逻辑\", \"result\": \"弹窗组件交互体验已优化\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"不重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"更新农融易小程序协议弹窗样式，调整重点内容标识方式\", \"result\": \"协议展示更清晰规范\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"不重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"调整村财后台管理系统行权大屏顶部标题栏左侧内边距\", \"result\": \"大屏标题视觉布局更协调\", \"start_time\": \"13:30\", \"end_time\": \""
+            ],
+            "content": "style(行权大屏): 调整顶部标题栏左侧内边距",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-24"
+        },
+        "2d7be514cfb59499e0537f7cad0865b18b917467": {
+            "last_used": "2026-04-28",
+            "variants": [
+                "[{\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序弹窗组件头部布局，完善关闭按钮交互逻辑\", \"result\": \"弹窗组件交互体验已优化\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"不重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"更新农融易小程序协议弹窗样式，调整重点内容标识方式\", \"result\": \"协议展示更清晰规范\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"不重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"调整村财后台管理系统行权大屏顶部标题栏左侧内边距\", \"result\": \"大屏标题视觉布局更协调\", \"start_time\": \"13:30\", \"end_time\": \""
+            ],
+            "content": "chore(预警统计): 修改预警情况统计的预警类型全部选项的值",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-17"
         }
     }
 }
