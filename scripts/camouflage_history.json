@@ -169,6 +169,42 @@
             "platform": "GitLab",
             "author": "liangan",
             "original_date": "2026-04-17"
+        },
+        "e0f043ee2e6d0bed94578e6002ad7c0281a9920c": {
+            "last_used": "2026-04-28",
+            "variants": [
+                "[{\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序弹窗组件头部布局及关闭按钮交互逻辑\", \"result\": \"交互更流畅，布局更规范\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"调整农融易小程序信用申请协议弹窗样式与核心信息标识\", \"result\": \"用户阅读体验提升\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"重构村财后台预警监督模块数据展示适配逻辑\", \"result\": \"展示适配兼容性优化\", \"start_time\": \"13:30\", \"end_time\": \"15:00\", \"pr"
+            ],
+            "content": "chore(预警监督): 更正数据展示问题",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-17"
+        },
+        "f680a8e7ff1c9c806ef6041f1054ea44c978ad7f": {
+            "last_used": "2026-04-28",
+            "variants": [
+                "[{\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序弹窗组件头部布局及关闭按钮交互逻辑\", \"result\": \"交互更流畅，布局更规范\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"调整农融易小程序信用申请协议弹窗样式与核心信息标识\", \"result\": \"用户阅读体验提升\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"重构村财后台预警监督模块数据展示适配逻辑\", \"result\": \"展示适配兼容性优化\", \"start_time\": \"13:30\", \"end_time\": \"15:00\", \"pr"
+            ],
+            "content": "fix(base-button): 修复高级点击态样式不生效的问题",
+            "source_name": "农融易小程序",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-mini",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-17"
+        },
+        "4e0ba43e9b529bc125553a03c83cadde84d29ecd": {
+            "last_used": "2026-04-28",
+            "variants": [
+                "[{\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序弹窗组件头部布局及关闭按钮交互逻辑\", \"result\": \"交互更流畅，布局更规范\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"调整农融易小程序信用申请协议弹窗样式与核心信息标识\", \"result\": \"用户阅读体验提升\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"重构村财后台预警监督模块数据展示适配逻辑\", \"result\": \"展示适配兼容性优化\", \"start_time\": \"13:30\", \"end_time\": \"15:00\", \"pr"
+            ],
+            "content": "chore(预警监督): 对预警次数表格列首行统一处理显示空",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-17"
         }
     }
 }
