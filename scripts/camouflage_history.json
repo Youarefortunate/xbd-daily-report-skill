@@ -132,5 +132,43 @@
             "author": "liangan",
             "original_date": "2026-04-24"
         }
+    },
+    "2026-04-28": {
+        "fbe4315993758b3a61700362e372281f5bc6e471": {
+            "last_used": "2026-04-28",
+            "variants": [
+                "[{\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序授信申请协议弹窗样式及重点内容标识\", \"result\": \"协议展示更清晰直观\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序弹窗组件头部布局及关闭按钮逻辑\", \"result\": \"交互体验更流畅稳定\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"优化行权大屏预警信息展示单元，添加数量标注规范\", \"result\": \"预警信息数据展示更规范\", \"start_time\": \"13:30\", \"end_time\": \"14:40\", \""
+            ],
+            "content": "fix: 高频预警-不现实预警次数",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-18"
+        },
+        "bed08dbc5a91672d78c8e0e75a9b4ebb210ad202": {
+            "last_used": "2026-04-28",
+            "variants": [
+                "[{\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序授信申请协议弹窗样式及重点内容标识\", \"result\": \"协议展示更清晰直观\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序弹窗组件头部布局及关闭按钮逻辑\", \"result\": \"交互体验更流畅稳定\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"优化行权大屏预警信息展示单元，添加数量标注规范\", \"result\": \"预警信息数据展示更规范\", \"start_time\": \"13:30\", \"end_time\": \"14:40\", \""
+            ],
+            "content": "chore(行权大屏): 为预警信息标签添加单位\"(条)\"",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-24"
+        },
+        "64c21382c6f3dbe50612ed069f282f583b406a04": {
+            "last_used": "2026-04-28",
+            "variants": [
+                "[{\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序授信申请协议弹窗样式及重点内容标识\", \"result\": \"协议展示更清晰直观\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序弹窗组件头部布局及关闭按钮逻辑\", \"result\": \"交互体验更流畅稳定\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"优化行权大屏预警信息展示单元，添加数量标注规范\", \"result\": \"预警信息数据展示更规范\", \"start_time\": \"13:30\", \"end_time\": \"14:40\", \""
+            ],
+            "content": "style(预警监督): 调整搜索表单字段顺序并添加150%屏幕适配样式",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-17"
+        }
     }
 }
