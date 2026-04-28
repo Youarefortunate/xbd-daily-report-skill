@@ -28,6 +28,7 @@ jobs:
             python -m pip install --upgrade pip
             pip install -r scripts/requirements.txt
             python -m playwright install --with-deps chromium
+            sudo apt-get install -y xvfb
 
       - name: Run Daily Bot
         env:
@@ -48,11 +49,11 @@ jobs:
           GITLAB_REPO_2_BRANCH: ${{ secrets.GITLAB_REPO_2_BRANCH }}
           GITLAB_REPO_2_NAME: ${{ secrets.GITLAB_REPO_2_NAME }}
           WECOM_FORM_URL: ${{ secrets.WECOM_FORM_URL }}
-          HEADLESS: "true"
+          HEADLESS: "false"
           GITHUB_ACTIONS: "true"
         run: |
           cd scripts
-          python main.py
+          xvfb-run -a python main.py
 
       - name: Commit & Push changes (History)
         uses: stefanzweifel/git-auto-commit-action@v5

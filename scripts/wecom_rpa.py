@@ -67,10 +67,11 @@ class WeComRPA:
 
     async def init_browser(self, headless: bool = True):
         """初始化持久化浏览器环境"""
-        # 在 GitHub Actions 环境下强制开启无头模式，并根据环境调整参数
+        # 在 GitHub Actions 环境下，如果不手动指定 HEADLESS=false，则默认开启无头模式
+        # 但我们现在支持通过 XVFB 运行有头模式，所以移除强制 True 逻辑
         is_ci = os.getenv("GITHUB_ACTIONS") == "true"
-        if is_ci:
-            log.info("🚀 [RPA] 检测到 GitHub Actions 环境，强制启用无头模式。")
+        if is_ci and os.getenv("HEADLESS") != "false":
+            log.info("🚀 [RPA] 检测到 GitHub Actions 环境且未指定 Headful，默认启用无头模式。")
             headless = True
 
         log.info(f"🌐 [RPA] 正在初始化浏览器引擎 (Headless={headless})...")
@@ -115,6 +116,10 @@ class WeComRPA:
         )
 
         self.page = await self.browser_context.new_page()
+        # 设置全局超时 (90秒)
+        self.page.set_default_navigation_timeout(90000)
+        self.page.set_default_timeout(90000)
+
         # 注入多重反检测脚本，绕过常规浏览器特征检测
         await self.page.add_init_script("""
             // 1. 移除 webdriver 标记
