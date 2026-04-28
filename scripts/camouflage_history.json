@@ -241,6 +241,42 @@
             "platform": "GitLab",
             "author": "liangan",
             "original_date": "2026-04-17"
+        },
+        "48353f005cce4d19d3b7a832265cc33cec0c26e8": {
+            "last_used": "2026-04-28",
+            "variants": [
+                "[{\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序协议弹窗样式及重点标识，修复展示组件头部布局与关闭逻辑\", \"result\": \"小程序相关UI组件已优化完成\", \"start_time\": \"09:00\", \"end_time\": \"11:17\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"重构村财高频签约监管模块，优化数据层级支持与lastLevelThreshold配置\", \"result\": \"监管模块数据适配已完善\", \"start_time\": \"13:30\", \"end_time\": \"15:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"村财\"}, {\"date\": \"2026-04-28\", \"content\": \"排查修复村财高频预警regionLevel=4时的表格取值问题\", \"result\": \"预警数据显示异常已解决\", \"s"
+            ],
+            "content": "chore: 预警-单项预警数据、工作台、统计列表一致对接接口，等待后端完成",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-16"
+        },
+        "bfaf752618d6af64a745804bd22c738c7a618e2f": {
+            "last_used": "2026-04-28",
+            "variants": [
+                "[{\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序协议弹窗样式及重点标识，修复展示组件头部布局与关闭逻辑\", \"result\": \"小程序相关UI组件已优化完成\", \"start_time\": \"09:00\", \"end_time\": \"11:17\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"重构村财高频签约监管模块，优化数据层级支持与lastLevelThreshold配置\", \"result\": \"监管模块数据适配已完善\", \"start_time\": \"13:30\", \"end_time\": \"15:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"村财\"}, {\"date\": \"2026-04-28\", \"content\": \"排查修复村财高频预警regionLevel=4时的表格取值问题\", \"result\": \"预警数据显示异常已解决\", \"s"
+            ],
+            "content": "fix: 预警-高频预警regionLevel=4时表格取值不正确问题",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-18"
+        },
+        "f79ba09a7e38276c18b3fa53a39092d0e16d45a8": {
+            "last_used": "2026-04-28",
+            "variants": [
+                "[{\"date\": \"2026-04-28\", \"content\": \"优化农融易小程序协议弹窗样式及重点标识，修复展示组件头部布局与关闭逻辑\", \"result\": \"小程序相关UI组件已优化完成\", \"start_time\": \"09:00\", \"end_time\": \"11:17\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-04-28\", \"content\": \"重构村财高频签约监管模块，优化数据层级支持与lastLevelThreshold配置\", \"result\": \"监管模块数据适配已完善\", \"start_time\": \"13:30\", \"end_time\": \"15:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"村财\"}, {\"date\": \"2026-04-28\", \"content\": \"排查修复村财高频预警regionLevel=4时的表格取值问题\", \"result\": \"预警数据显示异常已解决\", \"s"
+            ],
+            "content": "feat: 高频签约监管支持第4级数据查看，lastLevelThreshold可配置",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-04-17"
         }
     }
 }
