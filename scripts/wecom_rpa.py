@@ -235,6 +235,27 @@ class WeComRPA:
         ]
 
         target_element = None
+        # --- 增强诊断：监听所有重定向和响应 ---
+        qr_buffer = None
+
+        async def on_response(response):
+            nonlocal qr_buffer
+            # 匹配二维码图片的特征 URL
+            if "qr" in response.url.lower() and ("image" in response.headers.get("content-type", "")):
+                try:
+                    qr_buffer = await response.body()
+                    log.info(f"⚡ [RPA] 成功在网络层拦截到二维码图片流: {response.url[:60]}...")
+                except:
+                    pass
+
+        self.page.on("response", on_response)
+        
+        def on_nav(frame):
+            if frame == self.page.main_frame:
+                log.info(f"📍 [RPA 导航] 页面重定向至: {self.page.url}")
+        
+        self.page.on("framenavigated", on_nav)
+
         for sel in qr_selectors:
             target_element = await self.page.query_selector(sel)
             if target_element:
@@ -252,54 +273,50 @@ class WeComRPA:
             
             if self.feishu_sender and (is_headless or is_ci):
                 try:
-                    # 等待一下确保基础渲染完成
-                    await self.page.wait_for_load_state("domcontentloaded")
-                    await asyncio.sleep(3)
+                    # 等待一下确保基础渲染完成或拦截到流
+                    await asyncio.sleep(5)
 
                     qr_path = os.path.join(
                         os.path.dirname(self.user_data_dir), "login_qr.png"
                     )
                     
-                    # --- 优化：尝试直接从 DOM 中提取二维码图片数据，避开耗时的截图逻辑 ---
-                    log.info("🔍 [RPA] 正在尝试从页面 DOM 中提取二维码数据...")
-                    qr_data = await self.page.evaluate("""
-                        (selectors) => {
-                            function findImg(root) {
-                                for (const sel of selectors) {
-                                    const el = root.querySelector(sel);
-                                    if (!el) continue;
-                                    const img = el.tagName === 'IMG' ? el : el.querySelector('img');
-                                    if (img && img.src && img.src.length > 100) return img.src;
-                                }
-                                return null;
-                            }
-                            // 1. 根页面搜索
-                            let src = findImg(document);
-                            if (src) return src;
-                            // 2. Iframe 搜索 (跨域可能受限，但先尝试)
-                            for (const frame of document.querySelectorAll('iframe')) {
-                                try {
-                                    src = findImg(frame.contentDocument || frame.contentWindow.document);
-                                    if (src) return src;
-                                } catch(e) {}
-                            }
-                            return null;
-                        }
-                    """, qr_selectors)
-
-                    if qr_data and qr_data.startswith("data:image"):
-                        # 处理 Base64 格式
-                        import base64
-                        header, encoded = qr_data.split(",", 1)
+                    if qr_buffer:
+                        # 方案 A: 使用拦截到的网络流 (最稳、最快)
                         with open(qr_path, "wb") as f:
-                            f.write(base64.b64decode(encoded))
-                        log.info("✅ [RPA] 成功通过 Base64 提取二维码。")
+                            f.write(qr_buffer)
+                        log.info("✅ [RPA] 成功通过网络拦截获取二维码。")
                     else:
-                        # 如果提取失败，最后尝试一次快速截图 (不带动画)
-                        log.info(f"📸 [RPA] 提取失败，改用全页面截图策略: {qr_path}")
-                        await self.page.screenshot(
-                            path=qr_path, timeout=30000, full_page=False, animations="disabled"
-                        )
+                        # 方案 B: 如果拦截失败，尝试深度扫描 Frames
+                        log.info("🔍 [RPA] 未截获流，正在深度扫描 Frames...")
+                        qr_data = None
+                        for frame in self.page.frames:
+                            try:
+                                qr_data = await frame.evaluate("""
+                                    (selectors) => {
+                                        for (const sel of selectors) {
+                                            const el = document.querySelector(sel);
+                                            if (!el) continue;
+                                            const img = el.tagName === 'IMG' ? el : el.querySelector('img');
+                                            if (img && img.src && (img.src.startsWith('data:image') || img.src.includes('qr'))) {
+                                                return img.src;
+                                            }
+                                        }
+                                        return null;
+                                    }
+                                """, qr_selectors)
+                                if qr_data: break
+                            except: continue
+
+                        if qr_data and qr_data.startswith("data:image"):
+                            import base64
+                            header, encoded = qr_data.split(",", 1)
+                            with open(qr_path, "wb") as f:
+                                f.write(base64.b64decode(encoded))
+                            log.info("✅ [RPA] 成功从 Frame 中提取 Base64 二维码。")
+                        else:
+                            # 方案 C: 最后的倔强 - 无超时截图
+                            log.info(f"📸 [RPA] 提取仍失败，尝试零超时全页截图: {qr_path}")
+                            await self.page.screenshot(path=qr_path, timeout=60000)
 
                     image_key = self.feishu_sender.upload_image(qr_path)
                     if image_key:
@@ -311,15 +328,14 @@ class WeComRPA:
                         return False
                 except Exception as e:
                     log.error(f"❌ [RPA] 飞书二维码推送失败 (将终止流程): {e}")
+                    # 如果被重定向到了腾讯安全页面，记录一下
+                    if "aq.qq.com" in self.page.url:
+                        log.error("🛡️ [RPA] 检测到被重定向至腾讯安全风控页，环境可能已被拉黑。")
                     return False
                 finally:
-                    # 统一清理临时二维码图片
                     if os.path.exists(qr_path):
-                        try:
-                            os.remove(qr_path)
-                            log.info("🧹 已清理临时二维码图片。")
-                        except:
-                            pass
+                        try: os.remove(qr_path)
+                        except: pass
 
             # 轮询等待登录状态改变（即登录组件消失）
             log.info(f"⏳ 等待扫码中 (限时 {self.login_timeout}s)...")
