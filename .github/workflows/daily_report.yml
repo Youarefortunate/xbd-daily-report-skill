@@ -2,8 +2,8 @@ name: Daily Bot Automation
 
 on:
   schedule:
-    # 每天北京时间 18:20 运行 (UTC 10:20)
-    - cron: "20 10 * * 1-5"
+    # 每天北京时间 18:35 运行，实际触发通常在 18:35~18:50 之间
+    - cron: "35 10 * * 1-5"
   workflow_dispatch:
     # 支持手动触发
 
@@ -25,13 +25,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-            python -m pip install --upgrade pip
-            pip install -r scripts/requirements.txt
-            python -m playwright install --with-deps chromium
-            # 安装中文字体，防止页面渲染乱码导致元素无法定位
-            sudo apt-get update
-            sudo apt-get install -y xvfb fonts-noto-cjk
-            
+          python -m pip install --upgrade pip
+          pip install -r scripts/requirements.txt
+          python -m playwright install --with-deps chromium
+          # 安装中文字体，防止页面渲染乱码导致元素无法定位
+          sudo apt-get update
+          sudo apt-get install -y xvfb fonts-noto-cjk
+
       - name: Cache Browser Profile
         uses: actions/cache@v4
         with:
@@ -59,6 +59,7 @@ jobs:
           GITLAB_REPO_2_BRANCH: ${{ secrets.GITLAB_REPO_2_BRANCH }}
           GITLAB_REPO_2_NAME: ${{ secrets.GITLAB_REPO_2_NAME }}
           WECOM_FORM_URL: ${{ secrets.WECOM_FORM_URL }}
+          WECOM_COOKIE: ${{ secrets.WECOM_COOKIE }}
           HEADLESS: "false"
           GITHUB_ACTIONS: "true"
         run: |

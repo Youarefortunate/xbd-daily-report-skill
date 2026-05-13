@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from logger import log
 from camouflage import camouflage_history_manager
 from config import config
+from wecom_sender import send_wecom_report
 import warnings
 
 # 忽略 asyncio 在 Windows 退出时的常见底层资源警告 (ProactorEventLoop 遗留问题)
@@ -204,7 +205,7 @@ async def send_to_feishu(report_items, fake_items, feishu=None):
 
     if not feishu:
         feishu = FeishuSender()
-    
+
     feishu_enabled = (
         all([feishu.app_id, feishu.app_secret, feishu.target_chat_id])
         and "xxx" not in feishu.app_id
@@ -275,9 +276,9 @@ async def fill_rpa(report_items, feishu, feishu_enabled, rpa=None):
 
 async def run_daily_bot():
     """主编排逻辑"""
-    # 0. 准入检查
-    if not await is_github_actions_environment():
-        return
+    # 0. 准入检查 (已注释：不再需要 GitHub Actions 环境限制)
+    # if not await is_github_actions_environment():
+    #     return
 
     log.info("🎬 [系统] 开始执行日报生成流水线...")
     load_dotenv()
@@ -289,11 +290,18 @@ async def run_daily_bot():
         os.path.join(current_dir, "..", "references", "system_prompt.md")
     )
 
-    # 0.5 RPA 环境预检
-    rpa, feishu, feishu_enabled = await rpa_health_check()
-    if rpa is None and config.get("wecom.form_url"):
-        # 如果配置了 URL 但返回 None，说明预检失败已处理
-        return
+    # 0.5 RPA 环境预检 (已注释：已改为 HTTP 直推方式)
+    # rpa, feishu, feishu_enabled = await rpa_health_check()
+    # if rpa is None and config.get("wecom.form_url"):
+    #     return
+
+    from feishu_sender import FeishuSender
+
+    feishu = FeishuSender()
+    feishu_enabled = (
+        all([feishu.app_id, feishu.app_secret, feishu.target_chat_id])
+        and "xxx" not in feishu.app_id
+    )
 
     # 1. 采集数据
     commits, fake_items, feishu_extra = await collect_data(config.gitlab_repos)
@@ -305,16 +313,21 @@ async def run_daily_bot():
 
     if not report_items:
         log.warning("⚠️ 提示: 没有生成任何日报条目，终止后续流程。")
-        if rpa: await rpa.close()
+        # if rpa: await rpa.close()
         return
 
     print_polished_report(report_items)
 
     # 3. 飞书推送
-    feishu, feishu_enabled = await send_to_feishu(report_items, fake_items, feishu=feishu)
+    feishu, feishu_enabled = await send_to_feishu(
+        report_items, fake_items, feishu=feishu
+    )
 
-    # 4. 企业微信 RPA
-    await fill_rpa(report_items, feishu, feishu_enabled, rpa=rpa)
+    # 4. 企业微信表单推送
+    send_wecom_report(report_items)
+
+    # 4. 企业微信 RPA (已注释，改为上面的 HTTP 直推方式)
+    # await fill_rpa(report_items, feishu, feishu_enabled, rpa=rpa)
 
 
 if __name__ == "__main__":
