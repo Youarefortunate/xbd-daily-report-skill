@@ -316,5 +316,31 @@
             "author": "liangan",
             "original_date": "2026-05-08"
         }
+    },
+    "2026-05-14": {
+        "c6de0477e76d9d812f55f5379fc9462123a445d0": {
+            "last_used": "2026-05-14",
+            "variants": [
+                "[{\"date\": \"2026-05-14\", \"content\": \"修复预警监督模块东莞中山特殊区域下砖无法返回上一级及数据异常问题\", \"result\": \"修复两个功能异常问题\", \"start_time\": \"09:00\", \"end_time\": \"10:00\", \"priority\": \"重要、紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-14\", \"content\": \"重构农融易小程序Navigator工具的类型定义，完善跳转类型的自动类型提示\", \"result\": \"提升开发体验，降低跳转逻辑错误率\", \"start_time\": \"10:00\", \"end_time\": \"11:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-14\", \"content\": \"优化预警监督模块导出功能，规范初始导出选项逻辑\", \"result\": \"提升用户操作便捷性\", \"start_time\": \"1"
+            ],
+            "content": "chore(预警监督-导出): 导出弹窗默认选中“导出本级数据”",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-09"
+        },
+        "4d3a35effbbf70456f919783a1eed8b863c1df46": {
+            "last_used": "2026-05-14",
+            "variants": [
+                "[{\"date\": \"2026-05-14\", \"content\": \"修复预警监督模块东莞中山特殊区域下砖无法返回上一级及数据异常问题\", \"result\": \"修复两个功能异常问题\", \"start_time\": \"09:00\", \"end_time\": \"10:00\", \"priority\": \"重要、紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-14\", \"content\": \"重构农融易小程序Navigator工具的类型定义，完善跳转类型的自动类型提示\", \"result\": \"提升开发体验，降低跳转逻辑错误率\", \"start_time\": \"10:00\", \"end_time\": \"11:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-14\", \"content\": \"优化预警监督模块导出功能，规范初始导出选项逻辑\", \"result\": \"提升用户操作便捷性\", \"start_time\": \"1"
+            ],
+            "content": "feat(base-tag): 新增基础标签组件 base-tag",
+            "source_name": "农融易小程序",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-mini",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-06"
+        }
     }
 }
