@@ -278,5 +278,43 @@
             "author": "liangan",
             "original_date": "2026-04-17"
         }
+    },
+    "2026-05-13": {
+        "a6aa7f5bb2436998a6c052846a04b2cc90a7b397": {
+            "last_used": "2026-05-13",
+            "variants": [
+                "[{\"date\": \"2026-05-13\", \"content\": \"统一调整农融易后台授信申请模块搜索表单的字段命名\", \"result\": \"完成表单字段命名统一\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-13\", \"content\": \"修复村财后台预警监督一肩挑镇级用户列表接口请求错误\", \"result\": \"接口请求问题已修复\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-13\", \"content\": \"优化农融易小程序基础组件，将属性定义独立抽取至props文件\", \"result\": \"基础组件结构更清晰\", \"start_time\": \"13:30\", \"end_time\": \"1"
+            ],
+            "content": "refactor(基础组件): 提取组件属性定义至独立 props 文件",
+            "source_name": "农融易小程序",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-mini",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-08"
+        },
+        "450f499f723c4572c41f5efd6af6ccbf51b42073": {
+            "last_used": "2026-05-13",
+            "variants": [
+                "[{\"date\": \"2026-05-13\", \"content\": \"统一调整农融易后台授信申请模块搜索表单的字段命名\", \"result\": \"完成表单字段命名统一\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-13\", \"content\": \"修复村财后台预警监督一肩挑镇级用户列表接口请求错误\", \"result\": \"接口请求问题已修复\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-13\", \"content\": \"优化农融易小程序基础组件，将属性定义独立抽取至props文件\", \"result\": \"基础组件结构更清晰\", \"start_time\": \"13:30\", \"end_time\": \"1"
+            ],
+            "content": "chore: add .worktrees/ to .gitignore",
+            "source_name": "农融易小程序",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-mini",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-06"
+        },
+        "1752b98ee576b2cb8515d3eab9598a3da50ab2b4": {
+            "last_used": "2026-05-13",
+            "variants": [
+                "[{\"date\": \"2026-05-13\", \"content\": \"统一调整农融易后台授信申请模块搜索表单的字段命名\", \"result\": \"完成表单字段命名统一\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-13\", \"content\": \"修复村财后台预警监督一肩挑镇级用户列表接口请求错误\", \"result\": \"接口请求问题已修复\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-13\", \"content\": \"优化农融易小程序基础组件，将属性定义独立抽取至props文件\", \"result\": \"基础组件结构更清晰\", \"start_time\": \"13:30\", \"end_time\": \"1"
+            ],
+            "content": "refactor(credit-apply): 移除废弃的 Computed 模块并优化弹窗数据处理",
+            "source_name": "农融易小程序",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-mini",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-08"
+        }
     }
 }
