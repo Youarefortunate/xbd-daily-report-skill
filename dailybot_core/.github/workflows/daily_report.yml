@@ -1,0 +1,61 @@
+name: Daily Bot Automation
+
+on:
+  schedule:
+    # 每天北京时间 18:35 运行，实际触发通常在 18:35~18:50 之间
+    - cron: "35 10 * * 1-5"
+  workflow_dispatch:
+    # 支持手动触发
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write # 允许回写 Git 仓库
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r dailybot_core/requirements.txt
+
+      - name: Run Daily Bot
+        env:
+          GITLAB_URL: ${{ secrets.GITLAB_URL }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          GITLAB_AUTHOR: ${{ secrets.GITLAB_AUTHOR }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_TARGET_CHAT_ID: ${{ secrets.FEISHU_TARGET_CHAT_ID }}
+          GITLAB_REPO_0_PATH: ${{ secrets.GITLAB_REPO_0_PATH }}
+          GITLAB_REPO_0_BRANCH: ${{ secrets.GITLAB_REPO_0_BRANCH }}
+          GITLAB_REPO_0_NAME: ${{ secrets.GITLAB_REPO_0_NAME }}
+          GITLAB_REPO_1_PATH: ${{ secrets.GITLAB_REPO_1_PATH }}
+          GITLAB_REPO_1_BRANCH: ${{ secrets.GITLAB_REPO_1_BRANCH }}
+          GITLAB_REPO_1_NAME: ${{ secrets.GITLAB_REPO_1_NAME }}
+          GITLAB_REPO_2_PATH: ${{ secrets.GITLAB_REPO_2_PATH }}
+          GITLAB_REPO_2_BRANCH: ${{ secrets.GITLAB_REPO_2_BRANCH }}
+          GITLAB_REPO_2_NAME: ${{ secrets.GITLAB_REPO_2_NAME }}
+          WECOM_FORM_URL: ${{ secrets.WECOM_FORM_URL }}
+          GITHUB_ACTIONS: "true"
+        run: |
+          cd dailybot_core
+          python main.py
+
+      - name: Commit & Push changes (History)
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update camouflage history [skip ci]"
+          file_pattern: "dailybot_core/camouflage_history.json"
+          commit_user_name: "GitHub Actions Bot"
+          commit_user_email: "actions@github.com"

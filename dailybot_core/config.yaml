@@ -1,0 +1,13 @@
+openai:
+  base_url: "https://ark.cn-beijing.volces.com/api/v3"
+  model: "doubao-seed-2-0-code-preview-260215"
+
+# 伪装补全策略
+camouflage:
+  threshold: 5
+  lookback: 14
+  cooldown: 10
+
+scheduler:
+  # 指定运行日期: 1-7 分别代表周一至周日
+  weekdays: "1,2,3,4,5"
