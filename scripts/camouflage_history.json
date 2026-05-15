@@ -342,5 +342,67 @@
             "author": "liangan",
             "original_date": "2026-05-06"
         }
+    },
+    "2026-05-15": {
+        "44d438206a57fcd725a5c3b4655844d698d83654": {
+            "last_used": "2026-05-15",
+            "variants": [
+                "[{\"date\": \"2026-05-14\", \"content\": \"优化调整农融易小程序跳转工具类型提示逻辑，提升开发体验\", \"result\": \"跳转类型提示已适配更精准\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-14\", \"content\": \"排查优化预警监督模块特殊区域数据交互与页面跳转问题\", \"result\": \"东莞中山预警数据及返回逻辑修复完成\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-14\", \"content\": \"梳理重构授信管理后台页面组件与表单命名规范\", \"result\": \"表单与组件命名已统一规范\", \"start_time\": \"13:30\", \"end_ti"
+            ],
+            "content": "refactor(Navigator): 重构跳转工具的类型定义，自动根据当前跳转类型包含对应的类型提示",
+            "source_name": "农融易小程序",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-mini",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-14"
+        },
+        "47d93b09183b478cd21ccc16f878bb12444cf9f2": {
+            "last_used": "2026-05-15",
+            "variants": [
+                "[{\"date\": \"2026-05-14\", \"content\": \"优化调整农融易小程序跳转工具类型提示逻辑，提升开发体验\", \"result\": \"跳转类型提示已适配更精准\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-14\", \"content\": \"排查优化预警监督模块特殊区域数据交互与页面跳转问题\", \"result\": \"东莞中山预警数据及返回逻辑修复完成\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-14\", \"content\": \"梳理重构授信管理后台页面组件与表单命名规范\", \"result\": \"表单与组件命名已统一规范\", \"start_time\": \"13:30\", \"end_ti"
+            ],
+            "content": "fix(SearchForm): 修复 keep-alive 切换时导致SearchForm概率性消失问题",
+            "source_name": "农融易后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-admin",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-11"
+        },
+        "7877038b7b89cb65bc8f5a14d81c472379755a09": {
+            "last_used": "2026-05-15",
+            "variants": [
+                "[{\"date\": \"2026-05-14\", \"content\": \"优化调整农融易小程序跳转工具类型提示逻辑，提升开发体验\", \"result\": \"跳转类型提示已适配更精准\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-14\", \"content\": \"排查优化预警监督模块特殊区域数据交互与页面跳转问题\", \"result\": \"东莞中山预警数据及返回逻辑修复完成\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-14\", \"content\": \"梳理重构授信管理后台页面组件与表单命名规范\", \"result\": \"表单与组件命名已统一规范\", \"start_time\": \"13:30\", \"end_ti"
+            ],
+            "content": "chore(授信申请): 统一修改搜索表单字段命名",
+            "source_name": "农融易后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-admin",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-13"
+        },
+        "1d1a3e5f6d210d01adff598e472f1e0936140939": {
+            "last_used": "2026-05-15",
+            "variants": [
+                "[{\"date\": \"2026-05-14\", \"content\": \"优化调整农融易小程序跳转工具类型提示逻辑，提升开发体验\", \"result\": \"跳转类型提示已适配更精准\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-14\", \"content\": \"排查优化预警监督模块特殊区域数据交互与页面跳转问题\", \"result\": \"东莞中山预警数据及返回逻辑修复完成\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-14\", \"content\": \"梳理重构授信管理后台页面组件与表单命名规范\", \"result\": \"表单与组件命名已统一规范\", \"start_time\": \"13:30\", \"end_ti"
+            ],
+            "content": "feat(授信管理): 新增贷款资料说明弹窗组件",
+            "source_name": "农融易后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-admin",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-11"
+        },
+        "4acc9a94eebc996a935153a963726d3c84a133a4": {
+            "last_used": "2026-05-15",
+            "variants": [
+                "[{\"date\": \"2026-05-14\", \"content\": \"优化调整农融易小程序跳转工具类型提示逻辑，提升开发体验\", \"result\": \"跳转类型提示已适配更精准\", \"start_time\": \"09:00\", \"end_time\": \"10:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-14\", \"content\": \"排查优化预警监督模块特殊区域数据交互与页面跳转问题\", \"result\": \"东莞中山预警数据及返回逻辑修复完成\", \"start_time\": \"10:30\", \"end_time\": \"12:00\", \"priority\": \"重要、紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-14\", \"content\": \"梳理重构授信管理后台页面组件与表单命名规范\", \"result\": \"表单与组件命名已统一规范\", \"start_time\": \"13:30\", \"end_ti"
+            ],
+            "content": "fix(预警监督): 针对特殊区域东莞中山下砖无法返回上一级且数据显示异常",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-14"
+        }
     }
 }
