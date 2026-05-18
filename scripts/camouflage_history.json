@@ -404,5 +404,55 @@
             "author": "liangan",
             "original_date": "2026-05-14"
         }
+    },
+    "2026-05-18": {
+        "daab7a401b888162de995f8d08f434338e9b281b": {
+            "last_used": "2026-05-18",
+            "variants": [
+                "[{\"date\": \"2026-05-18\", \"content\": \"优化预警监督模块的导出按钮渲染逻辑，提升组件稳定性与交互响应性\", \"result\": \"按钮渲染异常问题已修复\", \"start_time\": \"09:00\", \"end_time\": \"10:00\", \"priority\": \"重要、不紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-18\", \"content\": \"重构预警监督一肩挑镇级用户列表接口调用适配逻辑\", \"result\": \"接口适配逻辑已梳理优化\", \"start_time\": \"10:00\", \"end_time\": \"11:10\", \"priority\": \"重要、不紧急\", \"type\": \"重构\", \"project\": \"村财\"}, {\"date\": \"2026-05-18\", \"content\": \"对农融易小程序的底部协议与操作组件进行性能优化与逻辑加固\", \"result\": \"组件复用性与稳定性提升\", \"start_time\": \"13:30\", \"end_t"
+            ],
+            "content": "fix(预警监督): 修复一肩挑登录用户为镇级时请求列表接口不正确",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-13"
+        },
+        "64d1a4b5d4fb8bb06be1371d27ebb13977a9ecb2": {
+            "last_used": "2026-05-18",
+            "variants": [
+                "[{\"date\": \"2026-05-18\", \"content\": \"优化预警监督模块的导出按钮渲染逻辑，提升组件稳定性与交互响应性\", \"result\": \"按钮渲染异常问题已修复\", \"start_time\": \"09:00\", \"end_time\": \"10:00\", \"priority\": \"重要、不紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-18\", \"content\": \"重构预警监督一肩挑镇级用户列表接口调用适配逻辑\", \"result\": \"接口适配逻辑已梳理优化\", \"start_time\": \"10:00\", \"end_time\": \"11:10\", \"priority\": \"重要、不紧急\", \"type\": \"重构\", \"project\": \"村财\"}, {\"date\": \"2026-05-18\", \"content\": \"对农融易小程序的底部协议与操作组件进行性能优化与逻辑加固\", \"result\": \"组件复用性与稳定性提升\", \"start_time\": \"13:30\", \"end_t"
+            ],
+            "content": "refactor(credit-apply): 将底部协议和操作区域抽离为独立组件",
+            "source_name": "农融易小程序",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-mini",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-08"
+        },
+        "08153f4da81ab6f2598bc0e393f49e2e9e5a8386": {
+            "last_used": "2026-05-18",
+            "variants": [
+                "[{\"date\": \"2026-05-18\", \"content\": \"优化预警监督模块的导出按钮渲染逻辑，提升组件稳定性与交互响应性\", \"result\": \"按钮渲染异常问题已修复\", \"start_time\": \"09:00\", \"end_time\": \"10:00\", \"priority\": \"重要、不紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-18\", \"content\": \"重构预警监督一肩挑镇级用户列表接口调用适配逻辑\", \"result\": \"接口适配逻辑已梳理优化\", \"start_time\": \"10:00\", \"end_time\": \"11:10\", \"priority\": \"重要、不紧急\", \"type\": \"重构\", \"project\": \"村财\"}, {\"date\": \"2026-05-18\", \"content\": \"对农融易小程序的底部协议与操作组件进行性能优化与逻辑加固\", \"result\": \"组件复用性与稳定性提升\", \"start_time\": \"13:30\", \"end_t"
+            ],
+            "content": "chore(loanRecord): 同步贷款状态枚举值与后端定义保持一致",
+            "source_name": "农融易后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-admin",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-11"
+        },
+        "5e9e755f9e5d9aab09f86af8cd216d409abf1704": {
+            "last_used": "2026-05-18",
+            "variants": [
+                "[{\"date\": \"2026-05-18\", \"content\": \"优化预警监督模块的导出按钮渲染逻辑，提升组件稳定性与交互响应性\", \"result\": \"按钮渲染异常问题已修复\", \"start_time\": \"09:00\", \"end_time\": \"10:00\", \"priority\": \"重要、不紧急\", \"type\": \"BUG修订\", \"project\": \"村财\"}, {\"date\": \"2026-05-18\", \"content\": \"重构预警监督一肩挑镇级用户列表接口调用适配逻辑\", \"result\": \"接口适配逻辑已梳理优化\", \"start_time\": \"10:00\", \"end_time\": \"11:10\", \"priority\": \"重要、不紧急\", \"type\": \"重构\", \"project\": \"村财\"}, {\"date\": \"2026-05-18\", \"content\": \"对农融易小程序的底部协议与操作组件进行性能优化与逻辑加固\", \"result\": \"组件复用性与稳定性提升\", \"start_time\": \"13:30\", \"end_t"
+            ],
+            "content": "fix(DataTable): 修复表格高度在窗口调整大小时不更新的问题",
+            "source_name": "农融易后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-admin",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-09"
+        }
     }
 }
