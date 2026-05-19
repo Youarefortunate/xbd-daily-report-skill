@@ -454,5 +454,55 @@
             "author": "liangan",
             "original_date": "2026-05-09"
         }
+    },
+    "2026-05-19": {
+        "4f945c91279fe745588ff766f626f2346ac4820d": {
+            "last_used": "2026-05-19",
+            "variants": [
+                "[{\"date\": \"2026-05-19\", \"content\": \"完成村财后台行权大屏年累计/平台累计切换，同步调整基本情况、财务运行、产权交易页面\", \"result\": \"行权大屏相关功能模块已初步开发\", \"start_time\": \"09:13\", \"end_time\": \"10:43\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"村财\"}, {\"date\": \"2026-05-19\", \"content\": \"优化农融易小程序跳转工具类型定义，实现类型提示自动匹配跳转类型\", \"result\": \"跳转工具类型提示体验已优化\", \"start_time\": \"10:43\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-19\", \"content\": \"修复农融易小程序授信申请页信息授权协议交互，强制设为必读并禁用选择\", \"result\": \"信息授权协议交互问题已修复\", "
+            ],
+            "content": "refactor(Navigator): 重构跳转工具的类型定义，自动根据当前跳转类型包含对应的类型提示",
+            "source_name": "农融易小程序",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-mini",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-14"
+        },
+        "35cc1a4f7de6bab6ac839ff35f81079303690a58": {
+            "last_used": "2026-05-19",
+            "variants": [
+                "[{\"date\": \"2026-05-19\", \"content\": \"完成村财后台行权大屏年累计/平台累计切换，同步调整基本情况、财务运行、产权交易页面\", \"result\": \"行权大屏相关功能模块已初步开发\", \"start_time\": \"09:13\", \"end_time\": \"10:43\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"村财\"}, {\"date\": \"2026-05-19\", \"content\": \"优化农融易小程序跳转工具类型定义，实现类型提示自动匹配跳转类型\", \"result\": \"跳转工具类型提示体验已优化\", \"start_time\": \"10:43\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-19\", \"content\": \"修复农融易小程序授信申请页信息授权协议交互，强制设为必读并禁用选择\", \"result\": \"信息授权协议交互问题已修复\", "
+            ],
+            "content": "fix(credit-apply): 强制设置信息授权协议为必读并禁用其选择器",
+            "source_name": "农融易小程序",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-mini",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-08"
+        },
+        "a1e2546b469c740ca57f287b74bf2e95a1f003fa": {
+            "last_used": "2026-05-19",
+            "variants": [
+                "[{\"date\": \"2026-05-19\", \"content\": \"完成村财后台行权大屏年累计/平台累计切换，同步调整基本情况、财务运行、产权交易页面\", \"result\": \"行权大屏相关功能模块已初步开发\", \"start_time\": \"09:13\", \"end_time\": \"10:43\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"村财\"}, {\"date\": \"2026-05-19\", \"content\": \"优化农融易小程序跳转工具类型定义，实现类型提示自动匹配跳转类型\", \"result\": \"跳转工具类型提示体验已优化\", \"start_time\": \"10:43\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-19\", \"content\": \"修复农融易小程序授信申请页信息授权协议交互，强制设为必读并禁用选择\", \"result\": \"信息授权协议交互问题已修复\", "
+            ],
+            "content": "chore: style",
+            "source_name": "农融易后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-admin",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-11"
+        },
+        "e0fe56bcdb3837f4dfd0e78e1547b0873e72c0a8": {
+            "last_used": "2026-05-19",
+            "variants": [
+                "[{\"date\": \"2026-05-19\", \"content\": \"完成村财后台行权大屏年累计/平台累计切换，同步调整基本情况、财务运行、产权交易页面\", \"result\": \"行权大屏相关功能模块已初步开发\", \"start_time\": \"09:13\", \"end_time\": \"10:43\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"村财\"}, {\"date\": \"2026-05-19\", \"content\": \"优化农融易小程序跳转工具类型定义，实现类型提示自动匹配跳转类型\", \"result\": \"跳转工具类型提示体验已优化\", \"start_time\": \"10:43\", \"end_time\": \"12:00\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"农融易\"}, {\"date\": \"2026-05-19\", \"content\": \"修复农融易小程序授信申请页信息授权协议交互，强制设为必读并禁用选择\", \"result\": \"信息授权协议交互问题已修复\", "
+            ],
+            "content": "chore(预警监督): 优化导出弹窗的交互与逻辑",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-11"
+        }
     }
 }
