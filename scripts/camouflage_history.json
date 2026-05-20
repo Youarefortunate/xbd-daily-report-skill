@@ -504,5 +504,55 @@
             "author": "liangan",
             "original_date": "2026-05-11"
         }
+    },
+    "2026-05-20": {
+        "afe1fb3875d7c3c4cbb8ac54bb41f068fb38d5dc": {
+            "last_used": "2026-05-20",
+            "variants": [
+                "[{\"date\": \"2026-05-20\", \"content\": \"完成农融易小程序批量技能文档编写与配套工具脚本开发\", \"result\": \"新增技能批量管理支撑工具\", \"start_time\": \"09:00\", \"end_time\": \"11:30\", \"priority\": \"重要、不紧急\", \"type\": \"文档编写\", \"project\": \"农融易\"}, {\"date\": \"2026-05-20\", \"content\": \"重构村财预警监督模块导出按钮的渲染逻辑与交互流程\", \"result\": \"导出按钮渲染稳定性大幅提升\", \"start_time\": \"13:30\", \"end_time\": \"14:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"村财\"}, {\"date\": \"2026-05-20\", \"content\": \"优化村财预警监督单项导出功能的范围交互体验\", \"result\": \"单项导出范围选择更清晰直观\", \"start_time\": \"14:30\", \"end_time\": \""
+            ],
+            "content": "fix(预警监督): 优化导出按钮渲染逻辑",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-18"
+        },
+        "98701bea5de8cbd77d784a68a750a59a53e5f439": {
+            "last_used": "2026-05-20",
+            "variants": [
+                "[{\"date\": \"2026-05-20\", \"content\": \"完成农融易小程序批量技能文档编写与配套工具脚本开发\", \"result\": \"新增技能批量管理支撑工具\", \"start_time\": \"09:00\", \"end_time\": \"11:30\", \"priority\": \"重要、不紧急\", \"type\": \"文档编写\", \"project\": \"农融易\"}, {\"date\": \"2026-05-20\", \"content\": \"重构村财预警监督模块导出按钮的渲染逻辑与交互流程\", \"result\": \"导出按钮渲染稳定性大幅提升\", \"start_time\": \"13:30\", \"end_time\": \"14:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"村财\"}, {\"date\": \"2026-05-20\", \"content\": \"优化村财预警监督单项导出功能的范围交互体验\", \"result\": \"单项导出范围选择更清晰直观\", \"start_time\": \"14:30\", \"end_time\": \""
+            ],
+            "content": "chore(tags-view): 优化右键菜单判断最左项和最右项，动画显示效果",
+            "source_name": "农融易后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-admin",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-11"
+        },
+        "23d1fedd4cfbdc960de66610cdfb268c86ec8c16": {
+            "last_used": "2026-05-20",
+            "variants": [
+                "[{\"date\": \"2026-05-20\", \"content\": \"完成农融易小程序批量技能文档编写与配套工具脚本开发\", \"result\": \"新增技能批量管理支撑工具\", \"start_time\": \"09:00\", \"end_time\": \"11:30\", \"priority\": \"重要、不紧急\", \"type\": \"文档编写\", \"project\": \"农融易\"}, {\"date\": \"2026-05-20\", \"content\": \"重构村财预警监督模块导出按钮的渲染逻辑与交互流程\", \"result\": \"导出按钮渲染稳定性大幅提升\", \"start_time\": \"13:30\", \"end_time\": \"14:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"村财\"}, {\"date\": \"2026-05-20\", \"content\": \"优化村财预警监督单项导出功能的范围交互体验\", \"result\": \"单项导出范围选择更清晰直观\", \"start_time\": \"14:30\", \"end_time\": \""
+            ],
+            "content": "feat(预警监督): 为单项预警导出功能增加范围选择弹窗",
+            "source_name": "村才后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-composite",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-08"
+        },
+        "7fbce23b27134a67d6c8f535b426f3025c7036f6": {
+            "last_used": "2026-05-20",
+            "variants": [
+                "[{\"date\": \"2026-05-20\", \"content\": \"完成农融易小程序批量技能文档编写与配套工具脚本开发\", \"result\": \"新增技能批量管理支撑工具\", \"start_time\": \"09:00\", \"end_time\": \"11:30\", \"priority\": \"重要、不紧急\", \"type\": \"文档编写\", \"project\": \"农融易\"}, {\"date\": \"2026-05-20\", \"content\": \"重构村财预警监督模块导出按钮的渲染逻辑与交互流程\", \"result\": \"导出按钮渲染稳定性大幅提升\", \"start_time\": \"13:30\", \"end_time\": \"14:30\", \"priority\": \"重要、不紧急\", \"type\": \"编码\", \"project\": \"村财\"}, {\"date\": \"2026-05-20\", \"content\": \"优化村财预警监督单项导出功能的范围交互体验\", \"result\": \"单项导出范围选择更清晰直观\", \"start_time\": \"14:30\", \"end_time\": \""
+            ],
+            "content": "chore: 修改贷款记录-贷款状态表格字段名",
+            "source_name": "农融易后台管理系统",
+            "repo_path": "frontend_b2bwings/b2b-wings-easyloan-admin",
+            "platform": "GitLab",
+            "author": "liangan",
+            "original_date": "2026-05-06"
+        }
     }
 }
