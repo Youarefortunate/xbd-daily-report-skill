@@ -241,19 +241,23 @@ class WeComRPA:
         async def on_response(response):
             nonlocal qr_buffer
             # 匹配二维码图片的特征 URL
-            if "qr" in response.url.lower() and ("image" in response.headers.get("content-type", "")):
+            if "qr" in response.url.lower() and (
+                "image" in response.headers.get("content-type", "")
+            ):
                 try:
                     qr_buffer = await response.body()
-                    log.info(f"⚡ [RPA] 成功在网络层拦截到二维码图片流: {response.url[:60]}...")
+                    log.info(
+                        f"⚡ [RPA] 成功在网络层拦截到二维码图片流: {response.url[:60]}..."
+                    )
                 except:
                     pass
 
         self.page.on("response", on_response)
-        
+
         def on_nav(frame):
             if frame == self.page.main_frame:
                 log.info(f"📍 [RPA 导航] 页面重定向至: {self.page.url}")
-        
+
         self.page.on("framenavigated", on_nav)
 
         for sel in qr_selectors:
@@ -270,7 +274,7 @@ class WeComRPA:
                 "headless", False
             )
             is_ci = os.getenv("GITHUB_ACTIONS") == "true"
-            
+
             if self.feishu_sender and (is_headless or is_ci):
                 try:
                     # 等待一下确保基础渲染完成或拦截到流
@@ -279,7 +283,7 @@ class WeComRPA:
                     qr_path = os.path.join(
                         os.path.dirname(self.user_data_dir), "login_qr.png"
                     )
-                    
+
                     if qr_buffer:
                         # 方案 A: 使用拦截到的网络流 (最稳、最快)
                         with open(qr_path, "wb") as f:
@@ -291,7 +295,8 @@ class WeComRPA:
                         qr_data = None
                         for frame in self.page.frames:
                             try:
-                                qr_data = await frame.evaluate("""
+                                qr_data = await frame.evaluate(
+                                    """
                                     (selectors) => {
                                         for (const sel of selectors) {
                                             const el = document.querySelector(sel);
@@ -303,19 +308,26 @@ class WeComRPA:
                                         }
                                         return null;
                                     }
-                                """, qr_selectors)
-                                if qr_data: break
-                            except: continue
+                                """,
+                                    qr_selectors,
+                                )
+                                if qr_data:
+                                    break
+                            except:
+                                continue
 
                         if qr_data and qr_data.startswith("data:image"):
                             import base64
+
                             header, encoded = qr_data.split(",", 1)
                             with open(qr_path, "wb") as f:
                                 f.write(base64.b64decode(encoded))
                             log.info("✅ [RPA] 成功从 Frame 中提取 Base64 二维码。")
                         else:
                             # 方案 C: 最后的倔强 - 无超时截图
-                            log.info(f"📸 [RPA] 提取仍失败，尝试零超时全页截图: {qr_path}")
+                            log.info(
+                                f"📸 [RPA] 提取仍失败，尝试零超时全页截图: {qr_path}"
+                            )
                             await self.page.screenshot(path=qr_path, timeout=60000)
 
                     image_key = self.feishu_sender.upload_image(qr_path)
@@ -330,12 +342,16 @@ class WeComRPA:
                     log.error(f"❌ [RPA] 飞书二维码推送失败 (将终止流程): {e}")
                     # 如果被重定向到了腾讯安全页面，记录一下
                     if "aq.qq.com" in self.page.url:
-                        log.error("🛡️ [RPA] 检测到被重定向至腾讯安全风控页，环境可能已被拉黑。")
+                        log.error(
+                            "🛡️ [RPA] 检测到被重定向至腾讯安全风控页，环境可能已被拉黑。"
+                        )
                     return False
                 finally:
                     if os.path.exists(qr_path):
-                        try: os.remove(qr_path)
-                        except: pass
+                        try:
+                            os.remove(qr_path)
+                        except:
+                            pass
 
             # 轮询等待登录状态改变（即登录组件消失）
             log.info(f"⏳ 等待扫码中 (限时 {self.login_timeout}s)...")
@@ -352,10 +368,17 @@ class WeComRPA:
                         )
                         return False
 
-                    # 检查登录组件是否仍然存在
-                    still_there = any(
-                        [await self.page.query_selector(sel) for sel in qr_selectors]
-                    )
+                    # 检查登录组件是否仍然存在，对重定向造成的上下文销毁进行容错
+                    try:
+                        still_there = any(
+                            [await self.page.query_selector(sel) for sel in qr_selectors]
+                        )
+                    except Exception as e:
+                        # 容忍页面跳转导致的上下文销毁
+                        log.info(f"ℹ️ 页面正在重定向或载入中，稍后继续检测...")
+                        await asyncio.sleep(2)
+                        continue
+
                     if not still_there:
                         log.info("✅ 登录组件已消失，扫码可能已成功。")
                         break
@@ -381,7 +404,7 @@ class WeComRPA:
                 os.path.dirname(self.user_data_dir), "error_page.png"
             )
             await self.page.screenshot(path=error_img, full_page=True)
-            
+
             # [GA] 记录当前 URL 和 标题，帮助分析是否被重定向到了异常页面
             current_url = self.page.url
             current_title = await self.page.title()

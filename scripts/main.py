@@ -290,10 +290,10 @@ async def run_daily_bot():
         os.path.join(current_dir, "..", "references", "system_prompt.md")
     )
 
-    # 0.5 RPA 环境预检 (已注释：已改为 HTTP 直推方式)
-    # rpa, feishu, feishu_enabled = await rpa_health_check()
-    # if rpa is None and config.get("wecom.form_url"):
-    #     return
+    # 0.5 RPA 环境预检
+    rpa, feishu, feishu_enabled = await rpa_health_check()
+    if rpa is None and config.get("wecom.form_url"):
+        return
 
     from feishu_sender import FeishuSender
 
@@ -323,11 +323,11 @@ async def run_daily_bot():
         report_items, fake_items, feishu=feishu
     )
 
-    # 4. 企业微信表单推送
-    send_wecom_report(report_items)
+    # 4. 企业微信表单推送 (已禁用直接提交)
+    # send_wecom_report(report_items)
 
-    # 4. 企业微信 RPA (已注释，改为上面的 HTTP 直推方式)
-    # await fill_rpa(report_items, feishu, feishu_enabled, rpa=rpa)
+    # 4. 企业微信 RPA
+    await fill_rpa(report_items, feishu, feishu_enabled, rpa=rpa)
 
 
 if __name__ == "__main__":
