@@ -1,13 +1,16 @@
 import asyncio
 import os
 import random
-from playwright.async_api import async_playwright, Page
+from typing import Any, List
+from playwright.async_api import async_playwright
 from logger import log
 from config import config
 
 
 class WeComRPA:
     """企业微信自动化填报类"""
+
+    LOGIN_QRCODE_SELECTOR = ".wwLogin_panel_middle .wwLogin_qrcode"
 
     def __init__(
         self, form_url: str = None, user_data_dir: str = None, feishu_sender=None
@@ -33,9 +36,18 @@ class WeComRPA:
         self.page = None
         self.playwright = None
 
-        # 模拟运行速度 (0.1~1.0, 越小越快, 默认 1)
-        self.speed_val = float(config.get("rpa.speed", 1))
-        # 登录超时时间
+        # 模拟运行速度 (0.1~1.0, 越小越快, 默认 0.6)
+        raw_speed = os.getenv("WECOM_RPA_SPEED") or config.get("rpa.speed", 0.6)
+        try:
+            self.speed_val = float(raw_speed)
+            if not (0.1 <= self.speed_val <= 1.0):
+                self.speed_val = 0.6
+        except (ValueError, TypeError):
+            self.speed_val = 0.6
+
+        # 计算键盘键入延迟 (ms): speed=1.0 -> 50ms, speed=0.1 -> 5ms (缩短延迟以加快输入速度)
+        self.typing_delay = int(self.speed_val * 50)
+        self.max_retry = int(config.get("rpa.max_retry", 1))
         self.login_timeout = int(config.get("rpa.login_timeout", 60))
 
     async def _human_sleep(self, base_delay: float = 1.0):
@@ -48,8 +60,6 @@ class WeComRPA:
         # 增加 20% - 70% 的随机扰动，使动作间隔不固定
         jitter = delay * random.uniform(0.2, 0.7)
         total_delay = delay + jitter
-
-        # log.debug(f"[RPA] 模拟延迟: {total_delay:.2f}s") # 生产模式下可静默
         await asyncio.sleep(total_delay)
 
     async def _get_executable_path(self) -> str:
@@ -65,16 +75,19 @@ class WeComRPA:
                 return path
         return None
 
-    async def init_browser(self, headless: bool = True):
+    async def init_browser(self, headless: bool = False):
         """初始化持久化浏览器环境"""
-        # 在 GitHub Actions 环境下，如果不手动指定 HEADLESS=false，则默认开启无头模式
-        # 但我们现在支持通过 XVFB 运行有头模式，所以移除强制 True 逻辑
-        is_ci = os.getenv("GITHUB_ACTIONS") == "true"
-        if is_ci and os.getenv("HEADLESS") != "false":
-            log.info(
-                "🚀 [RPA] 检测到 GitHub Actions 环境且未指定 Headful，默认启用无头模式。"
-            )
-            headless = True
+        # 优先读取环境参数是否开启无头浏览器，默认 false
+        env_headless = os.getenv("WECOM_RPA_HEADLESS")
+        if env_headless is not None:
+            headless = env_headless.lower() == "true"
+        else:
+            # 兼容普通环境变量 HEADLESS
+            env_common_headless = os.getenv("HEADLESS")
+            if env_common_headless is not None:
+                headless = env_common_headless.lower() == "true"
+            else:
+                headless = False
 
         log.info(f"🌐 [RPA] 正在初始化浏览器引擎 (Headless={headless})...")
         self.playwright = await async_playwright().start()
@@ -88,32 +101,23 @@ class WeComRPA:
                 "--disable-blink-features=AutomationControlled",
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",  # 关键：防止 Linux CI 环境下 /dev/shm 空间不足导致页面挂死
-                "--disable-gpu",  # 无头模式下通常建议禁用 GPU 加速以减少资源冲突
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--start-maximized",
             ],
-            "viewport": {"width": 1280, "height": 800},
+            "viewport": None,  # 允许浏览器窗口决定实际视口大小
+            "no_viewport": True,  # 禁用 Playwright 的默认固定视口缩放
+            "slow_mo": int(self.speed_val * 100),
             "locale": "zh-CN",
             "timezone_id": "Asia/Shanghai",
+            "ignore_default_args": ["--enable-automation"],
         }
 
-        # 伪装标准 Chrome User-Agent，移除 HeadlessChrome 标识
-        is_headless = headless
-        if is_headless:
-            ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-            launch_params["user_agent"] = ua
-            log.info(f"🕵️ [RPA] 已启用 User-Agent 伪装: {ua[:50]}...")
-
-        # CI 环境策略：不显式指定 channel="chrome"，除非确定环境中有 Google Chrome
-        # GitHub Actions 的 ubuntu-latest 通常带有 Chrome，但使用默认的 chromium 更稳。
-        if is_ci:
-            log.info("ℹ️ 处于 CI 环境，将直接启动 Playwright 默认浏览器...")
+        exec_path = await self._get_executable_path()
+        if exec_path:
+            launch_params["executable_path"] = exec_path
         else:
-            exec_path = await self._get_executable_path()
-            if exec_path:
-                launch_params["executable_path"] = exec_path
-            else:
-                log.info("ℹ️ 未发现本地 Chrome，将通过 Playwright 渠道启动...")
-                launch_params["channel"] = "chrome"
+            launch_params["channel"] = "chrome"
 
         self.browser_context = await self.playwright.chromium.launch_persistent_context(
             **launch_params
@@ -124,17 +128,20 @@ class WeComRPA:
         self.page.set_default_navigation_timeout(90000)
         self.page.set_default_timeout(90000)
 
-        # 注入多重反检测脚本，绕过常规浏览器特征检测
+        # 注册导航事件监听，使用 log.debug 避免控制台杂乱
+        def on_nav(frame):
+            if frame == self.page.main_frame:
+                log.debug(f"📍 [RPA 导航] 页面重定向至: {self.page.url}")
+
+        self.page.on("framenavigated", on_nav)
+
+        # 注入多重反检测脚本
         await self.page.add_init_script(
             """
-            // 1. 移除 webdriver 标记
             Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-            // 2. 伪造 chrome 运行对象
             window.chrome = { runtime: {} };
-            // 3. 固化语言和平台属性
             Object.defineProperty(navigator, 'languages', {get: () => ['zh-CN', 'zh', 'en']});
             Object.defineProperty(navigator, 'platform', {get: () => 'Win32'});
-            // 4. 伪装 WebGL 渲染器信息 (常见检测点)
             const getParameter = WebGLRenderingContext.prototype.getParameter;
             WebGLRenderingContext.prototype.getParameter = function(parameter) {
                 if (parameter === 37445) return 'Intel Inc.';
@@ -148,7 +155,6 @@ class WeComRPA:
     async def check_health(self) -> bool:
         """
         环境预检：检查是否可以正常访问填报页且已登录
-        :return: True 如果一切正常, False 如果需要登录或页面不可用
         """
         if not self.form_url:
             log.warning("⚠️ 未配置 WECOM_FORM_URL，跳过预检。")
@@ -156,13 +162,11 @@ class WeComRPA:
 
         try:
             log.info(f"🔍 [RPA 预检] 正在尝试访问填报页: {self.form_url}")
-            # 预检阶段使用较短的超时
             await self.page.goto(
                 self.form_url, wait_until="domcontentloaded", timeout=30000
             )
             await asyncio.sleep(2)
 
-            # 1. 检查是否出现登录组件
             qr_selectors = [
                 ".dui-snackbar-container.login-dialog",
                 ".login-dialog",
@@ -178,18 +182,15 @@ class WeComRPA:
                     )
                     return False
 
-            # 2. 检查关键填报元素是否存在
-            # .HoverBtn_btn__2ansF 是报表的悬浮填报按钮
-            target_selector = ".HoverBtn_btn__2ansF"
+            target_selector = ".HoverBtn_btn__2ansF, .question-main"
             if await self.page.query_selector(target_selector):
                 log.info("✅ [RPA 预检] 成功进入填报页面，环境正常。")
                 return True
 
-            # 3. 兜底逻辑：如果既没有登录框，也没有填报按钮，可能是页面加载不完整
             log.warning("⚠️ [RPA 预检] 未能检测到填报按钮，尝试等待 5 秒...")
             try:
                 await self.page.wait_for_selector(target_selector, timeout=5000)
-                log.info("✅ [RPA 预检] 经过等待，填报按钮已出现。")
+                log.info("✅ [RPA 预检] 经过等待，填报元素已出现。")
                 return True
             except:
                 log.error("❌ [RPA 预检] 页面加载异常或结构已变动。")
@@ -201,400 +202,460 @@ class WeComRPA:
 
     async def handle_login(self) -> bool:
         """登录检测与表单访问逻辑"""
-        qr_path = os.path.join(os.path.dirname(self.user_data_dir), "login_qr.png")
-        max_retries = 2
-        for attempt in range(max_retries + 1):
-            try:
-                log.info(
-                    f"🚀 正在访问表单 {'(重试中...)' if attempt > 0 else ''}: {self.form_url}"
-                )
-                # 调整为 domcontentloaded 提高在 CI 中的成功率，随后再等待关键元素
-                await self.page.goto(
-                    self.form_url, wait_until="domcontentloaded", timeout=90000
-                )
-                break
-            except Exception as e:
-                if attempt < max_retries:
-                    log.warning(f"⚠️ 访问超时，正在进行第 {attempt + 1} 次重试... ({e})")
-                    await asyncio.sleep(5)
-                    continue
-                else:
-                    log.error(f"❌ 访问表单最终失败: {e}")
-                    raise
+        if not self.form_url:
+            log.error(f"[RPA] 未配置 form_url，请在 config.yaml 中检查。")
+            return False
 
-        await self._human_sleep(2)
+        log.info(f"[RPA] 正在打开目标链接...")
+        await self.page.goto(self.form_url)
 
-        # 检测需要登录的对话框或二维码
-        # 优先使用用户提供的 .login-dialog，因为它包含了完整的登录 UI
+        # 1. 检查网络错误并重试
+        if not await self._check_and_handle_page_error(max_retries=self.max_retry):
+            log.warning(f"[RPA] 页面多次刷新无效，尝试新开一个标签页重新访问...")
+            if getattr(self, "page", None):
+                try:
+                    await self.page.close()
+                except Exception:
+                    pass
+            self.page = await self.browser_context.new_page()
+            await self.page.goto(self.form_url)
+            await self._human_sleep(3)
+
+            if not await self._check_and_handle_page_error(max_retries=self.max_retry):
+                raise Exception("新开标签页后仍然网络请求错误，无法恢复程序")
+
+        await self._human_sleep(3)
+
         qr_selectors = [
             ".dui-snackbar-container.login-dialog",
             ".login-dialog",
-            ".wwLogin_panel_middle .wwLogin_qrcode",
+            self.LOGIN_QRCODE_SELECTOR,
             "#login_frame",
             "iframe[src*='login']",
         ]
 
-        target_element = None
-        # --- 增强诊断：监听所有重定向和响应 ---
-        qr_buffer = None
+        start_wait = asyncio.get_event_loop().time()
 
-        async def on_response(response):
-            nonlocal qr_buffer
-            # 匹配二维码图片的特征 URL
-            if "qr" in response.url.lower() and (
-                "image" in response.headers.get("content-type", "")
-            ):
-                try:
-                    qr_buffer = await response.body()
-                    log.info(
-                        f"⚡ [RPA] 成功在网络层拦截到二维码图片流: {response.url[:60]}..."
-                    )
-                except:
-                    pass
-
-        self.page.on("response", on_response)
-
-        def on_nav(frame):
-            if frame == self.page.main_frame:
-                log.info(f"📍 [RPA 导航] 页面重定向至: {self.page.url}")
-
-        self.page.on("framenavigated", on_nav)
-
-        for sel in qr_selectors:
-            target_element = await self.page.query_selector(sel)
-            if target_element:
-                log.info(f"🔍 匹配到登录组件: {sel}")
-                break
-
-        if target_element:
-            log.warning("🔑 检测到登录入口，请查看飞书推送的二维码并扫码登录！")
-
-            # [GA 适配] 在 CI 环境下（即便开启了 XVFB 有头模式），也需要推送到飞书，因为人工无法直接看到屏幕
-            is_headless = getattr(self.browser_context, "_options", {}).get(
-                "headless", False
-            )
-            is_ci = os.getenv("GITHUB_ACTIONS") == "true"
-
-            if self.feishu_sender and (is_headless or is_ci):
-                try:
-                    # 等待一下确保基础渲染完成或拦截到流
-                    await asyncio.sleep(5)
-
-                    qr_path = os.path.join(
-                        os.path.dirname(self.user_data_dir), "login_qr.png"
-                    )
-
-                    if qr_buffer:
-                        # 方案 A: 使用拦截到的网络流 (最稳、最快)
-                        with open(qr_path, "wb") as f:
-                            f.write(qr_buffer)
-                        log.info("✅ [RPA] 成功通过网络拦截获取二维码。")
-                    else:
-                        # 方案 B: 如果拦截失败，尝试深度扫描 Frames
-                        log.info("🔍 [RPA] 未截获流，正在深度扫描 Frames...")
-                        qr_data = None
-                        for frame in self.page.frames:
-                            try:
-                                qr_data = await frame.evaluate(
-                                    """
-                                    (selectors) => {
-                                        for (const sel of selectors) {
-                                            const el = document.querySelector(sel);
-                                            if (!el) continue;
-                                            const img = el.tagName === 'IMG' ? el : el.querySelector('img');
-                                            if (img && img.src && (img.src.startsWith('data:image') || img.src.includes('qr'))) {
-                                                return img.src;
-                                            }
-                                        }
-                                        return null;
-                                    }
-                                """,
-                                    qr_selectors,
-                                )
-                                if qr_data:
-                                    break
-                            except:
-                                continue
-
-                        if qr_data and qr_data.startswith("data:image"):
-                            import base64
-
-                            header, encoded = qr_data.split(",", 1)
-                            with open(qr_path, "wb") as f:
-                                f.write(base64.b64decode(encoded))
-                            log.info("✅ [RPA] 成功从 Frame 中提取 Base64 二维码。")
-                        else:
-                            # 方案 C: 最后的倔强 - 无超时截图
-                            log.info(
-                                f"📸 [RPA] 提取仍失败，尝试零超时全页截图: {qr_path}"
-                            )
-                            await self.page.screenshot(path=qr_path, timeout=60000)
-
-                    image_key = self.feishu_sender.upload_image(qr_path)
-                    if image_key:
-                        self.feishu_sender.send_qr_code(
-                            image_key, title="🔑 企业微信场景登录"
-                        )
-                    else:
-                        log.error("❌ [RPA] 二维码上传失败，流程终止。")
-                        return False
-                except Exception as e:
-                    log.error(f"❌ [RPA] 飞书二维码推送失败 (将终止流程): {e}")
-                    # 如果被重定向到了腾讯安全页面，记录一下
-                    if "aq.qq.com" in self.page.url:
-                        log.error(
-                            "🛡️ [RPA] 检测到被重定向至腾讯安全风控页，环境可能已被拉黑。"
-                        )
-                    return False
-                finally:
-                    if os.path.exists(qr_path):
-                        try:
-                            os.remove(qr_path)
-                        except:
-                            pass
-
-            # 轮询等待登录状态改变（即登录组件消失）
-            log.info(f"⏳ 等待扫码中 (限时 {self.login_timeout}s)...")
-            import time
-
-            start_wait = time.time()
-
+        while True:
             try:
-                while True:
-                    # 检查是否超时
-                    if time.time() - start_wait > self.login_timeout:
-                        log.error(
-                            f"⏰ [RPA] 扫码超时 ({self.login_timeout}s)，任务自动失败结束。"
-                        )
-                        return False
+                # 检查是否超时
+                if asyncio.get_event_loop().time() - start_wait > self.login_timeout:
+                    log.error(
+                        f"⏰ [RPA] 扫码超时 ({self.login_timeout}s)，任务自动失败结束。"
+                    )
+                    return False
 
-                    # 检查登录组件是否仍然存在，对重定向造成的上下文销毁进行容错
-                    try:
-                        still_there = any(
-                            [await self.page.query_selector(sel) for sel in qr_selectors]
-                        )
-                    except Exception as e:
-                        # 容忍页面跳转导致的上下文销毁
-                        log.info(f"ℹ️ 页面正在重定向或载入中，稍后继续检测...")
-                        await asyncio.sleep(2)
-                        continue
+                # 2. 循环检测中也进行网络错误静默检查
+                if not await self._check_and_handle_page_error(
+                    max_retries=1, silent=True
+                ):
+                    return False
 
-                    if not still_there:
-                        log.info("✅ 登录组件已消失，扫码可能已成功。")
-                        break
-                    await asyncio.sleep(2)
-            finally:
-                # 统一清理临时二维码图片（唯一出口）
-                if os.path.exists(qr_path):
-                    try:
-                        os.remove(qr_path)
-                        log.info("🧹 已清理临时二维码图片。")
-                    except:
-                        pass
+                # 检查是否存在登录二维码
+                qr_code = await self.page.query_selector(self.LOGIN_QRCODE_SELECTOR)
+                if qr_code:
+                    log.warning("🔑 检测到登录二维码，请手动扫描二维码登录...")
 
-        # 验证是否进入填报页
-        await self._human_sleep(3)  # 给予页面跳转和动态渲染额外缓冲
-        try:
-            # 增加超时时间到 90s，并提供失败截图
-            await self.page.wait_for_selector(".HoverBtn_btn__2ansF", timeout=90000)
-            log.info("🎯 已进入填报页面，环境准备就绪。")
-            return True
-        except Exception as e:
-            error_img = os.path.join(
-                os.path.dirname(self.user_data_dir), "error_page.png"
-            )
-            await self.page.screenshot(path=error_img, full_page=True)
+                    # 轮询检测二维码是否消失
+                    while await self.page.query_selector(self.LOGIN_QRCODE_SELECTOR):
+                        await self._human_sleep(2)
+                        if asyncio.get_event_loop().time() - start_wait > self.login_timeout:
+                            log.error(f"⏰ [RPA] 扫码超时，任务自动失败结束。")
+                            return False
+                    log.info("✅ 二维码已消失，登录成功或已跳过。")
 
-            # [GA] 记录当前 URL 和 标题，帮助分析是否被重定向到了异常页面
-            current_url = self.page.url
-            current_title = await self.page.title()
-            log.error(f"❌ 未能检测到填报页关键元素: {e}")
-            log.error(f"📍 失败时 URL: {current_url}")
-            log.error(f"🏷️ 失败时标题: {current_title}")
-            log.info(f"📸 已保存错误全屏截图至: {error_img}")
-
-            # [GA] 在 Action 环境下，如果推送了飞书，可以把这张图也推过去方便调试
-            if self.feishu_sender and os.getenv("GITHUB_ACTIONS") == "true":
-                try:
-                    img_key = self.feishu_sender.upload_image(error_img)
-                    if img_key:
-                        self.feishu_sender.send_text(
-                            f"🚨 RPA 填报页加载失败\nURL: {current_url}\nTitle: {current_title}\nError: {e}"
-                        )
-                except:
-                    pass
-            return False
+                # 检查是否已进入表单内容页
+                current_url = self.page.url
+                if (
+                    "doc.weixin.qq.com/journal" in current_url
+                    or "doc.weixin.qq.com/forms/j/" in current_url
+                ) and "/error" not in current_url:
+                    # 通过页面关键元素确认
+                    hover_btn = await self.page.query_selector(
+                        ".HoverBtn_btn__2ansF, .question-main"
+                    )
+                    if hover_btn:
+                        log.info(f"🎯 已进入填报页面，环境准备就绪。")
+                        return True
+                    else:
+                        log.debug("[RPA] URL 匹配成功但尚未发现填报元素，继续等待...")
+                        await self._human_sleep(2)
+                else:
+                    log.debug(
+                        f"[RPA] 当前 URL: {current_url}，等待页面到达目标区域..."
+                    )
+                    await self._human_sleep(5)
+            except Exception as e:
+                if "Execution context was destroyed" in str(e):
+                    log.debug("[RPA] 检测到页面跳转导致的上下文切换，正在重试检测...")
+                    await self._human_sleep(2)
+                else:
+                    err_msg = str(e)
+                    if (
+                        "Target page, context or browser has been closed" in err_msg
+                        or "Browser closed" in err_msg
+                    ):
+                        raise e
+                    log.error(f"[RPA] 登录检测发生异常: {e}")
+                    await self._human_sleep(5)
 
     async def _trigger_modal(self):
-        """触发填报模态框 (模仿人类点击路径)"""
-        # 悬停激活
+        """触发填报模态框"""
+        # 1. 悬停按钮
         hover_btn = ".HoverBtn_btn__2ansF"
+        await self.page.wait_for_selector(hover_btn)
         await self.page.hover(hover_btn)
-        await self._human_sleep(0.5)
+        await self._human_sleep(1)
 
-        # 点击日期 (腾讯文档报表的典型激活逻辑)
+        # 2. 点击日期激活
         date_trigger = ".question-main .form-date-main"
         await self.page.click(date_trigger)
+        await self._human_sleep(0.5)
 
-        # 选今天
+        # 3. 点击“今天”
         today_btn = ".rc-calendar-footer-btn"
         await self.page.wait_for_selector(today_btn)
         await self.page.click(today_btn)
         await self._human_sleep(1)
 
-        # 点击表格行打开弹窗
+        # 4. 触发逻辑：点击表格行或新增行打开模态框
         row_selector = ".table-area-wrapper tbody .table-body-line-wrapper"
         try:
+            # 确保表格区域已加载
             await self.page.wait_for_selector(".table-area-wrapper", timeout=5000)
+
+            # 检测当前表格行数
             rows = await self.page.query_selector_all(row_selector)
             if not rows:
-                log.info("➕ 表格为空，点击'新增一行'开始填报...")
+                log.info("[RPA] 检测到表格为空，点击'新增一行'开始填报...")
                 await self.page.click(".add-area .add-line-wrapper")
             else:
                 log.info("📝 点击现有表格首行开启表单...")
-                await self.page.click(
-                    f"{row_selector}:nth-child(2)"
-                )  # 点击第二行通常是首个数据行
+                await self.page.click(f"{row_selector}:nth-child(2)")
             await self._human_sleep(1)
         except Exception as e:
             log.error(f"❌ 无法调起填报模态框: {e}")
             raise
 
-    async def _fill_input(self, title: str, value: str, dbl_click: bool = False):
-        """通用输入框填充逻辑"""
+    async def _fill_modal_input(self, title: str, value: str, dbl_click: bool = False):
+        """填充模态框内的文本/多行输入框"""
         if not value:
             return
-        # 复合定位器寻找对应标题的输入框
-        base = f'.dui-modal-content .question:has(.question-title span:has-text("{title}")) .question-content'
-        wrapper = f"{base} .Input-module_inputWrapper__pgeTK"
+        base_selector = f'.dui-modal-content .question:has(.question-main-content > .question-title > div:first-child span:has-text("{title}")) .question-content'
+        wrapper_selector = f"{base_selector} .Input-module_inputWrapper__pgeTK"
+
+        log.debug(f'[RPA] 正在尝试填充 "{title}": {value}')
 
         try:
-            el = await self.page.wait_for_selector(wrapper)
+            wrapper = await self.page.wait_for_selector(wrapper_selector)
             if dbl_click:
-                await el.dblclick()
+                await wrapper.dblclick()
             else:
-                await el.click()
-            await self._human_sleep(0.3)
+                await wrapper.click()
+            await self._human_sleep(0.5)
 
-            input_el = await el.query_selector("textarea, input")
-            if input_el:
-                await input_el.fill(value)
+            # 支持标准 input/textarea 以及 contenteditable 属性的 div，大大提高填充速度
+            input_element = await wrapper.query_selector("textarea, input, [contenteditable='true']")
+            if input_element:
+                await input_element.fill(value)
             else:
                 await self.page.keyboard.press("Control+A")
-                await self.page.keyboard.type(value)
+                await self.page.keyboard.press("Backspace")
+                await self.page.keyboard.type(value, delay=self.typing_delay)
         except Exception as e:
             log.warning(f"⚠️ 填充 '{title}' 失败: {e}")
 
-    async def _fill_time(self, title: str, time_str: str):
-        """处理时间选择器 (双列滚动)"""
+    async def _fill_modal_time(self, title: str, time_str: str):
+        """处理开始/结束时间选择 (双列滚动)"""
         if not time_str or ":" not in time_str:
             return
-        h, m = time_str.split(":")
+        hour, minute = time_str.split(":")
 
-        trigger = f'.dui-modal-content .question:has(.question-title span:has-text("{title}")) .rc-time-picker .form-time-main'
-        await self.page.click(trigger)
-        await self.page.wait_for_selector(".rc-time-picker-panel")
+        trigger_selector = f'.dui-modal-content .question:has(.question-main-content > .question-title > div:first-child span:has-text("{title}")) .question-content .rc-time-picker .form-time-main'
+        log.debug(f'[RPA] 正在设置 "{title}": {time_str}')
+        await self.page.click(trigger_selector)
+
+        panel_selector = ".rc-time-picker-panel"
+        await self.page.wait_for_selector(panel_selector)
 
         # 小时与分钟定位
         await self.page.click(
-            f'.rc-time-picker-panel-select:nth-child(1) li:has-text("{h}")'
+            f'.rc-time-picker-panel-select:nth-child(1) li:has-text("{hour}")'
         )
+        await self._human_sleep(0.3)
         await self.page.click(
-            f'.rc-time-picker-panel-select:nth-child(2) li:has-text("{m}")'
+            f'.rc-time-picker-panel-select:nth-child(2) li:has-text("{minute}")'
         )
+        await self._human_sleep(0.3)
 
-        # 强制失焦关闭
+        # 强制关闭面板
         await self.page.keyboard.press("Escape")
         await self._human_sleep(0.5)
 
-    async def _fill_dropdown(self, title: str, option: str):
+    async def _fill_modal_dropdown(self, title: str, option_text: str):
         """处理下拉菜单"""
-        if not option:
+        if not option_text:
             return
-        trigger = f'.dui-modal-content .question:has(.question-title span:has-text("{title}")) .dropdown-choice-fill-module_dropdownWrapper__-jSfm'
+        wrapper_selector = f'.dui-modal-content .question:has(.question-main-content > .question-title > div:first-child span:has-text("{title}")) .question-content .dropdown-choice-fill-module_dropdownWrapper__-jSfm span.form-input-affix-wrapper'
+        log.debug(f'[RPA] 正在选择下拉项 "{title}": {option_text}')
 
-        await self.page.click(trigger)
-        await self._human_sleep(0.5)
-        # 寻找对应选项
-        item_selector = (
-            f'.dropdown-choice-fill-module_dropdownMenuItem__EIDOY:has-text("{option}")'
-        )
         try:
-            item = await self.page.wait_for_selector(item_selector, timeout=3000)
-            await item.click()
+            wrapper = await self.page.wait_for_selector(wrapper_selector, timeout=5000)
+            await wrapper.click()
+            await self._human_sleep(0.8)
+        except Exception as e:
+            log.warning(f"⚠️ 无法点击下拉框 trigger '{title}': {e}")
+            return
+
+        menu_selector = ".dropdown-choice-fill-module_dropdownMenuList__soKw0"
+        try:
+            await self.page.wait_for_selector(menu_selector, timeout=5000)
         except:
-            # 兜底模糊匹配
-            await self.page.click(f'text="{option}"')
-        await self._human_sleep(0.3)
+            pass
+
+        item_selector = f'.dropdown-choice-fill-module_dropdownMenuItem__EIDOY:has(.dropdown-choice-fill-module_dropdownMenuItem_text__Nom3Y:has-text("{option_text}"))'
+
+        clicked = False
+        try:
+            target_item = await self.page.wait_for_selector(item_selector, timeout=2000)
+            if target_item:
+                await target_item.click()
+                clicked = True
+        except:
+            pass
+
+        # 兜底模糊匹配
+        if not clicked:
+            try:
+                menu_items = await self.page.query_selector_all(
+                    'div[class*="dropdownMenuList"] div[class*="dropdownMenuItem_text"]'
+                )
+                if not menu_items:
+                    menu_items = await self.page.query_selector_all(
+                        'div[class*="dropdownMenuList"] div[class*="dropdownMenuItem"]'
+                    )
+
+                for item in menu_items:
+                    text = (await item.inner_text()).strip()
+                    if text and (text in option_text or option_text in text):
+                        await item.scroll_into_view_if_needed()
+                        await self._human_sleep(0.1)
+                        await item.click()
+                        clicked = True
+                        break
+            except Exception as e:
+                log.debug(f"[RPA] 模糊匹配下拉项出错: {e}")
+
+        if not clicked:
+            try:
+                await self.page.click(f'text="{option_text}"')
+                clicked = True
+            except:
+                pass
+
+        if not clicked:
+            log.warning(f"⚠️ 下拉菜单 '{title}' 无法选中选项 '{option_text}'")
+            await self.page.keyboard.press("Escape")
+        else:
+            await self._human_sleep(0.3)
+
+    async def _fill_modal_choice(self, title: str, choice: str):
+        """处理单选组"""
+        if not choice:
+            return
+        container_selector = f'.dui-modal-content .question:has(.question-main-content > .question-title > div:first-child span:has-text("{title}")) .question-content .form-choice-new'
+        log.debug(f'[RPA] 正在尝试选择 "{title}": {choice}')
+
+        try:
+            container = await self.page.wait_for_selector(container_selector)
+            await container.scroll_into_view_if_needed()
+
+            option_selector = f'{container_selector} label:has-text("{choice}"), {container_selector} .choice-fill-module_radioItem_title__D0gAG:has-text("{choice}")'
+            target_option = await self.page.wait_for_selector(option_selector)
+            await target_option.click()
+            await self._human_sleep(0.5)
+        except Exception as e:
+            log.warning(f"⚠️ 无法选择单选项 '{choice}': {e}")
+
+    async def _click_add_line(self):
+        """点击“新增一行”按钮"""
+        add_line_btn = '.dui-modal-content .form-subform-fill-footer-pc_action span:has-text("新增一行")'
+        try:
+            btn = await self.page.wait_for_selector(add_line_btn)
+            await btn.click()
+        except Exception as e:
+            log.error(f"[RPA] 点击“新增一行”失败: {e}")
+            raise
+
+    async def _click_finish(self):
+        """点击“完成”按钮"""
+        finish_btn = '.dui-modal-content .form-subform-fill-panel-pc_submit button .dui-button-container:has-text("完成")'
+        try:
+            btn = await self.page.wait_for_selector(finish_btn)
+            await btn.click()
+        except Exception as e:
+            log.error(f"[RPA] 点击“完成”失败: {e}")
+            raise
+
+    async def _click_submit(self):
+        """点击“提交”按钮"""
+        submit_btn = '.form-fill-pc .FillFooter_footer__X07QG button:has-text("提交")'
+        try:
+            btn = await self.page.wait_for_selector(submit_btn)
+            await btn.click()
+            log.info("[RPA] 提交按钮已点击。")
+        except Exception as e:
+            log.error(f"[RPA] 点击“提交”失败: {e}")
+            raise
+
+    async def _check_and_handle_page_error(
+        self, max_retries: int = None, silent: bool = False
+    ) -> bool:
+        """检查页面是否出现网络请求错误，并尝试刷新"""
+        if max_retries is None:
+            max_retries = self.max_retry
+
+        retry_count = 0
+        error_text = "网络请求错误，请再试一次"
+
+        while retry_count < max_retries:
+            try:
+                error_msg = await self.page.query_selector(f'text="{error_text}"')
+                if error_msg:
+                    retry_count += 1
+                    log.warning(
+                        f"[RPA] 检测到页面报错 '{error_text}' (第 {retry_count} 次)。"
+                    )
+                    await self.page.goto(self.form_url)
+                    await self._human_sleep(5)
+                else:
+                    return True
+            except Exception as e:
+                if "Execution context was destroyed" in str(e):
+                    return True
+                err_msg = str(e)
+                if (
+                    "Target page, context or browser has been closed" in err_msg
+                    or "Browser closed" in err_msg
+                ):
+                    raise e
+                raise
+
+        if not silent:
+            log.error(f"[RPA] 页面加载持续失败 (多次重试仍然报错: {error_text})。")
+        return False
+
+    async def _cleanup_defect_rows(self):
+        """检查并删除表单中的缺陷行（包含 empty-placeholder 的行）"""
+        log.info("[RPA] 正在检查并清理表单缺陷行...")
+
+        defect_row_selector = (
+            ".table-area-wrapper tr.table-body-line-wrapper:has(.empty-placeholder)"
+        )
+        trashbin_selector = ".hover-tool-bar .hover-tool-bar-trashbin-wrapper"
+
+        try:
+            while True:
+                rows = await self.page.query_selector_all(defect_row_selector)
+                if not rows:
+                    log.info("[RPA] 未发现缺陷行，清理完毕。")
+                    break
+
+                for i in range(len(rows) - 1, -1, -1):
+                    row = rows[i]
+                    await row.scroll_into_view_if_needed()
+                    await row.hover()
+                    await self._human_sleep(1)
+
+                    trashbin = await self.page.query_selector(trashbin_selector)
+                    if trashbin:
+                        await trashbin.click()
+                        await self._human_sleep(1)
+
+                        confirm_modal_selector = ".dui-modal.form-confirm"
+                        confirm_btn_selector = (
+                            f"{confirm_modal_selector} .dui-modal-footer-ok"
+                        )
+                        try:
+                            confirm_btn = await self.page.wait_for_selector(
+                                confirm_btn_selector, timeout=3000
+                            )
+                            if confirm_btn:
+                                await confirm_btn.click()
+                                log.info("[RPA] 已点击“确认”删除缺陷行。")
+                                await self._human_sleep(1)
+                        except Exception as e:
+                            log.warning(f"[RPA] 未检测到删除确认弹窗或点击确认失败: {e}")
+                    else:
+                        log.warning(
+                            "[RPA] 未能找到删除图标，跳过该行。"
+                        )
+                await self._human_sleep(0.5)
+        except Exception as e:
+            log.error(f"[RPA] 清理缺陷行时发生异常: {e}")
 
     async def fill_all(self, data_list: list):
-        """循环执行所有条目填报"""
+        """执行表单填充逻辑"""
+        items = data_list if isinstance(data_list, list) else [data_list]
+        if not items:
+            log.warning("[RPA] 无可用填报数据。")
+            return
+
+        # 1. 触发模态框
         await self._trigger_modal()
 
-        for i, item in enumerate(data_list):
+        # 2. 循环处理数据记录
+        for index, item in enumerate(items):
             log.info(
-                f"📑 正在填充条目 [{i+1}/{len(data_list)}]: {item.get('content')[:15]}..."
+                f"📑 正在填充条目 [{index + 1}/{len(items)}]: {item.get('content', '')[:20]}..."
             )
 
-            # 核心填充
-            is_first = i == 0
-            await self._fill_input(
+            # 等待模态框内容加载
+            modal_selector = ".dui-modal-content"
+            await self.page.wait_for_selector(modal_selector, timeout=10000)
+
+            # 填充字段 (仅第一条记录使用双击全选覆盖，后续新增行使用单击)
+            is_first = index == 0
+            await self._fill_modal_input(
                 "工作内容", item.get("content", ""), dbl_click=is_first
             )
-            await self._fill_input(
+            await self._fill_modal_input(
                 "工作成果", item.get("result", ""), dbl_click=is_first
             )
-            await self._fill_time("开始时间", item.get("start_time", ""))
-            await self._fill_time("结束时间", item.get("end_time", ""))
-            await self._fill_dropdown("工作类型", item.get("type", ""))
-            await self._fill_dropdown("业务中心", item.get("project", ""))
+            await self._fill_modal_time("开始时间", item.get("start_time", ""))
+            await self._fill_modal_time("结束时间", item.get("end_time", ""))
+            await self._fill_modal_choice("重要性与紧急度", item.get("priority", ""))
+            await self._fill_modal_dropdown("工作类型", item.get("type", ""))
+            await self._fill_modal_dropdown("业务中心", item.get("project", ""))
 
-            # 重要性 (单选)
-            priority = item.get("priority", "")
-            if priority:
-                await self.page.click(
-                    f'.dui-modal-content label:has-text("{priority}")'
-                )
-
-            # 换行控制
-            if i < len(data_list) - 1:
-                # 使用 self.page.click 而不是隐式的 logger
-                await self.page.click('.dui-modal-content span:has-text("新增一行")')
+            # 循环控制逻辑
+            if index < len(items) - 1:
+                await self._click_add_line()
                 await self._human_sleep(1)
+            else:
+                log.info("[RPA] 所有条目已填充完毕。")
 
-        # 完成弹窗
-        await self.page.click('.dui-modal-content button:has-text("完成")')
+        # 3. 点击“完成”
+        await self._click_finish()
         await self._human_sleep(2)
 
-        # [GA 适配] 在无头模式下自动提交
-        # 本地模式下保持原样，方便用户手动复核
-        is_headless = await self.page.evaluate(
-            "() => !window.chrome || !window.chrome.runtime"
-        )
-        # 简单判断，或者直接检查 self.browser_context._options['headless']
-        # 实际上我们可以在 init_browser 里存一个 self.is_headless
+        # 4. 清理可能存在的缺陷行（空行）
+        auto_cleanup = config.get("rpa.auto_cleanup", True)
+        if auto_cleanup:
+            await self._cleanup_defect_rows()
 
-        if os.getenv("GITHUB_ACTIONS") == "true" or os.getenv("HEADLESS") == "true":
-            log.info("🚀 [RPA] 检测到静默模式，正在尝试自动点击【提交】按钮...")
-            submit_selectors = [
-                'button.dui-button-type-primary:has-text("提交")',
-                'span:has-text("提交")',
-                ".footer-submit-btn",
-            ]
-            for sel in submit_selectors:
-                try:
-                    btn = await self.page.query_selector(sel)
-                    if btn and await btn.is_visible():
-                        await btn.click()
-                        log.info(f"✅ [RPA] 已触发自动提交 ({sel})")
-                        await self._human_sleep(3)
-                        break
-                except:
-                    continue
+        # 5. 检查环境参数或配置决定是否点击“提交”
+        env_submit = os.getenv("WECOM_RPA_AUTO_SUBMIT")
+        if env_submit is not None:
+            auto_submit = env_submit.lower() == "true"
         else:
-            log.info(
-                "✨ 数据填充成功，请在浏览器中核对，确保无误后点击页面右下角的【提交】。"
-            )
+            auto_submit = config.get("rpa.auto_submit", False)
+
+        if auto_submit:
+            log.info("[RPA] 检测到 auto_submit=true，执行最终提交...")
+            await self._click_submit()
+        else:
+            log.info("✨ 数据填充成功，请在浏览器中核对，确保无误后点击页面右下角的【提交】。")
 
     async def close(self):
         """优雅关闭浏览器与驱动资源"""

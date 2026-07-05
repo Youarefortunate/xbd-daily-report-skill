@@ -17,18 +17,28 @@ class AIProcessor:
         :param model: 模型名称 (可选，默认从环境读取)
         """
         self.api_key = api_key or os.getenv("OPENAI_API_KEY", "")
-        self.base_url = base_url or config.get("openai.base_url", "https://api.openai.com/v1")
+        self.base_url = base_url or config.get(
+            "openai.base_url", "https://api.openai.com/v1"
+        )
         self.model = model or config.get("openai.model", "")
+        self.timeout = float(config.get("openai.timeout", 240))
+        self.max_retries = int(config.get("openai.max_retries", 0))
+        self.max_tokens = int(config.get("openai.max_tokens", 2048))
+        self.thinking_type = str(config.get("openai.thinking_type", "disabled")).strip()
 
         if not self.api_key:
             log.warning("⚠️ 警告: 未在环境或配置中发现 OPENAI_API_KEY")
 
-        # 显式初始化异步 httpx 客户端
         http_client = httpx.AsyncClient(
-            base_url=self.base_url, follow_redirects=True, timeout=60.0
+            base_url=self.base_url,
+            follow_redirects=True,
+            timeout=httpx.Timeout(self.timeout, connect=10.0),
         )
         self.client = AsyncOpenAI(
-            api_key=self.api_key, base_url=self.base_url, http_client=http_client
+            api_key=self.api_key,
+            base_url=self.base_url,
+            http_client=http_client,
+            max_retries=self.max_retries,
         )
 
     def _load_file_content(self, file_path: str) -> str:
@@ -60,15 +70,25 @@ class AIProcessor:
     async def polish(self, system_prompt: str, user_content: str) -> str:
         """调用 OpenAI 兼容接口进行润色 (异步)"""
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
+            request_payload = {
+                "model": self.model,
+                "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_content},
                 ],
-                temperature=0.3,
-                stream=False,
-            )
+                "temperature": 0.3,
+                "stream": False,
+            }
+
+            if self.max_tokens > 0:
+                request_payload["max_tokens"] = self.max_tokens
+
+            if self.thinking_type:
+                request_payload["extra_body"] = {
+                    "thinking": {"type": self.thinking_type}
+                }
+
+            response = await self.client.chat.completions.create(**request_payload)
             return response.choices[0].message.content
         except Exception as e:
             raise Exception(f"AI 调用失败: {e}")

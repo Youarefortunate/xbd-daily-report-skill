@@ -1,29 +1,35 @@
-# XBD 日报自动化配置文件
-# 存放非敏感、结构化的公共预设
+# ============================================================
+# 日报自动化 — 非敏感、结构化公共预设
+# 所有配置项均可被同名环境变量覆盖 (点号转下划线大写)
+# 例如: openai.model -> OPENAI_MODEL
+# ============================================================
 
-# 提示词与补充信息路径
+# 额外补充日报文件 (相对于 scripts/ 目录)
 extra_report_path: "extra_report.txt"
 
+# AI 润色配置
 openai:
   base_url: "https://ark.cn-beijing.volces.com/api/v3"
-  model: "doubao-seed-2-0-code-preview-260215"
+  model: "deepseek-v4-pro-260425"
+  timeout: 240                # 请求超时秒数
+  max_retries: 0              # 失败重试次数（0 表示不重试）
+  max_tokens: 2048            # 最大输出 token，限制响应长度
+  thinking_type: "disabled"   # DeepSeek 思维链模式，"disabled" 可大幅提速
 
+# RPA 浏览器自动化配置
 rpa:
-  # 模拟真人速度 (0.1~1.0, 1.0为标准速，越小越快)
-  speed: 0.6
-  # 扫码登录超时时间(秒)
-  login_timeout: 60
+  speed: 0.6           # 模拟真人速度 (0.1~1.0，越小越快)
+  login_timeout: 60    # 扫码登录超时时间 (秒)
 
-# 伪装补全策略
+# 伪装数据补全策略
 camouflage:
-  threshold: 5
-  lookback: 14
-  cooldown: 10
+  threshold: 5         # 当日提交数低于此值时触发补全
+  lookback: 14         # 素材回溯天数
+  cooldown: 10         # 素材冷却天数 (避免短期内重复使用)
 
 # Windows 定时任务调度器配置
 scheduler:
-  auto_start: true
-  auto_path: true
-  time: "18:15"
-  # 指定运行日期: 1-7 分别代表周一至周日
-  weekdays: "1,2,3,4,5"
+  auto_start: false
+  auto_path: false
+  time: "18:20"
+  weekdays: "1,2,3,4,5"  # 1-7 代表周一至周日

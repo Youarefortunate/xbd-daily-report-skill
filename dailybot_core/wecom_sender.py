@@ -22,7 +22,7 @@ PROJECT_OPTION_MAP = {
     "村（居）委财务系统": "7",
     "村务易": "8",
     "管理费用": "9",
-    "其它": "10",
+    "其他": "10",
 }
 
 TYPE_OPTION_MAP = {
@@ -51,7 +51,7 @@ TYPE_OPTION_MAP = {
     "系统维护": "23",
     "内部培训": "24",
     "团队建设": "25",
-    "其它工作": "26",
+    "其他工作": "26",
 }
 
 
@@ -115,9 +115,9 @@ def _parse_cookie_string(cookie_str):
 def convert_to_form_tasks(report_items):
     tasks = []
     for item in report_items:
-        task_type = item.get("type", "其它工作")
+        task_type = item.get("type", "其他工作")
         priority = item.get("priority", "不重要、不紧急")
-        project = item.get("project", "其它")
+        project = item.get("project", "其他")
 
         task = {
             "items": [

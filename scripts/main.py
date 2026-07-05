@@ -1,11 +1,13 @@
 import os
 import json
+import argparse
 import asyncio
 from dotenv import load_dotenv
 from logger import log
 from camouflage import camouflage_history_manager
 from config import config
 from wecom_sender import send_wecom_report
+from report_printer import print_raw_commits, print_polished_report
 import warnings
 
 # 忽略 asyncio 在 Windows 退出时的常见底层资源警告 (ProactorEventLoop 遗留问题)
@@ -13,89 +15,6 @@ warnings.filterwarnings(
     "ignore", category=RuntimeWarning, message=".*Event loop is closed.*"
 )
 warnings.filterwarnings("ignore", category=ResourceWarning)
-
-
-def print_raw_commits(commits, fake_items=None):
-    if not commits and not fake_items:
-        return
-
-    log.info("")
-    log.info("  平台: GITLAB")
-
-    # 1. 打印今日真实工作
-    if commits:
-        grouped_real = {}
-        for c in commits:
-            p = c.get("project", "未知项目")
-            p_name = c.get("project_name", "")
-            p_display = f"{p} ({p_name})" if p_name else p
-            d_key = c.get("date", "未知日期")[:10]
-            grouped_real.setdefault(p_display, {}).setdefault(d_key, []).append(c)
-
-        log.info("    📦 [今日真实工作]")
-        for p_display, dates in grouped_real.items():
-            log.info(f"    数据源: {p_display}")
-            for d_key in sorted(dates.keys(), reverse=True):
-                log.info(f"      📅 日期: {d_key}")
-                for c in dates[d_key]:
-                    # 提取时间
-                    time_str = "00:00"
-                    try:
-                        from datetime import datetime
-
-                        dt = datetime.fromisoformat(
-                            c.get("date", "").replace("Z", "+00:00")
-                        )
-                        time_str = dt.strftime("%H:%M")
-                    except:
-                        pass
-                    log.info(
-                        f"        - [{time_str}]({c.get('branch', 'unknown')}) {c.get('title', '')}"
-                    )
-
-    # 2. 打印待伪装素材
-    if fake_items:
-        grouped_fake = {}
-        for item in fake_items:
-            p_display = f"{item.source} ({item.repo_path})"
-            d_key = item.date or "未知日期"
-            grouped_fake.setdefault(p_display, {}).setdefault(d_key, []).append(item)
-
-        log.info("    🎭 [待伪装素材 - GITLAB]")
-        for p_display, dates in grouped_fake.items():
-            log.info(f"      数据源: {p_display}")
-            for d_key in sorted(dates.keys(), reverse=True):
-                log.info(f"        📅 日期: {d_key}")
-                for item in dates[d_key]:
-                    log.info(f"          - {item.content}")
-    log.info("")
-
-
-def print_polished_report(report_items):
-    if not report_items:
-        return
-
-    from datetime import datetime
-
-    today = datetime.now().strftime("%Y-%m-%d")
-
-    log.info(f"  📊 [每日工作总结-AI润色] (日期: {today})")
-    for item in report_items:
-        log.info(f"    - {item.get('content', '无')}")
-        log.info(f"        └─ 成果: {item.get('result', '无')}100%")
-        # 构造详情行
-        start = item.get("start_time", "09:00")
-        end = item.get("end_time", "18:00")
-        priority = item.get("priority", "普通")
-        p_emoji = "🔴" if "重要" in priority else "🟢"
-        type_str = item.get("type", "编码")
-        project = item.get("project", "核心")
-
-        details = (
-            f"🕒 {start}~{end} | {p_emoji} {priority} | 🏷️ {type_str} | 🏢 {project}"
-        )
-        log.info(f"        └─ 详情: {details}")
-        log.info("")
 
 
 async def is_github_actions_environment() -> bool:
@@ -117,44 +36,7 @@ async def is_github_actions_environment() -> bool:
     return True
 
 
-async def rpa_health_check():
-    """步骤 0.5: RPA 环境预检 (提前启动浏览器检查)"""
-    from wecom_rpa import WeComRPA
-    from feishu_sender import FeishuSender
-
-    feishu = FeishuSender()
-    # 临时检查是否启用飞书，用于 RPA 推送二维码
-    feishu_enabled = (
-        all([feishu.app_id, feishu.app_secret, feishu.target_chat_id])
-        and "xxx" not in feishu.app_id
-    )
-
-    rpa = WeComRPA(feishu_sender=feishu if feishu_enabled else None)
-    is_headless = os.getenv("HEADLESS", "false").lower() == "true"
-
-    if rpa.form_url:
-        log.info("🔍 [预检] 正在进行 RPA 运行环境检查...")
-        try:
-            await rpa.init_browser(headless=is_headless)
-            # handle_login 会检测是否需要扫码，并在 CI 环境下推送到飞书
-            if not await rpa.handle_login():
-                log.error(
-                    "❌ [预检] RPA 环境异常（扫码超时或页面不可用），已提前终止流程以节省资源。"
-                )
-                await rpa.close()
-                return None, None, False
-        except Exception as e:
-            log.error(f"❌ [预检] RPA 初始化失败: {e}，流程终止。")
-            await rpa.close()
-            return None, None, False
-    else:
-        log.info("ℹ️ 未配置 WECOM_FORM_URL，跳过 RPA 预检。")
-        rpa = None
-
-    return rpa, feishu, feishu_enabled
-
-
-async def collect_data(repo_configs):
+async def collect_data(repo_configs, camouflage_enabled=True):
     """步骤 1: 采集 GitLab 数据与飞书动态指令"""
     from gitlab_collector import GitLabCollector
     from feishu_sender import FeishuSender
@@ -165,7 +47,7 @@ async def collect_data(repo_configs):
     # 1.3 伪装数据补全
     camouflage_threshold = int(config.get("camouflage.threshold", 8))
     fake_items = []
-    if len(commits) < camouflage_threshold:
+    if camouflage_enabled and len(commits) < camouflage_threshold:
         needed = camouflage_threshold - len(commits)
         fake_items = collector.generate_camouflage_data(
             repo_configs,
@@ -274,37 +156,77 @@ async def fill_rpa(report_items, feishu, feishu_enabled, rpa=None):
             pass
 
 
-async def run_daily_bot():
-    """主编排逻辑"""
-    # 0. 准入检查 (已注释：不再需要 GitHub Actions 环境限制)
-    # if not await is_github_actions_environment():
-    #     return
+def _env_bool(env_key: str, default: bool) -> bool:
+    """从环境变量读取布尔值，用于 argparse default。"""
+    val = os.getenv(env_key, "")
+    if val == "":
+        return default
+    return val.lower() == "true"
 
+
+def _add_common_args(parser: argparse.ArgumentParser) -> None:
+    """为子命令添加通用可选参数，均支持环境变量作为默认值。"""
+    parser.add_argument(
+        "--feishu",
+        action="store_true",
+        default=_env_bool("DAILYBOT_FEISHU_ENABLED", False),
+        help="启用飞书推送（默认关闭，通过 DAILYBOT_FEISHU_ENABLED 环境变量控制）",
+    )
+    parser.add_argument(
+        "--no-camouflage",
+        action="store_true",
+        default=not _env_bool("DAILYBOT_CAMOUFLAGE_ENABLED", True),
+        help="禁用伪装数据补全（默认开启，通过 DAILYBOT_CAMOUFLAGE_ENABLED 环境变量控制）",
+    )
+    parser.add_argument(
+        "--extra-report",
+        default=os.getenv("DAILYBOT_EXTRA_REPORT_PATH", "extra_report.txt"),
+        help="额外补充日报文件路径（默认 extra_report.txt）",
+    )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """构建 CLI 参数解析器，支持 rpa / push 两种子命令。"""
+    parser = argparse.ArgumentParser(description="日报生成流水线")
+    subparsers = parser.add_subparsers(dest="mode")
+
+    rpa_parser = subparsers.add_parser("rpa", help="RPA 浏览器自动化填报（默认模式）")
+    _add_common_args(rpa_parser)
+
+    push_parser = subparsers.add_parser("push", help="一键 API 推送至企业微信")
+    _add_common_args(push_parser)
+
+    # 在 subparsers 之后设置默认值，以防其被覆盖，并为没有指定子命令直接运行时的参数提供默认值
+    parser.set_defaults(
+        mode="rpa",
+        feishu=_env_bool("DAILYBOT_FEISHU_ENABLED", False),
+        no_camouflage=not _env_bool("DAILYBOT_CAMOUFLAGE_ENABLED", True),
+        extra_report=os.getenv("DAILYBOT_EXTRA_REPORT_PATH", "extra_report.txt"),
+    )
+
+    return parser
+
+
+async def run_daily_bot(args: argparse.Namespace):
+    """主编排逻辑 — 通过 argparse + 环境变量控制运行模式"""
     log.info("🎬 [系统] 开始执行日报生成流水线...")
     load_dotenv()
 
+    mode = args.mode or "rpa"
+    feishu_push_enabled = args.feishu
+    camouflage_enabled = not args.no_camouflage
+    extra_report_filename = args.extra_report
+
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    extra_path_val = config.get("extra_report_path", "extra_report.txt")
-    extra_path = os.path.join(current_dir, extra_path_val)
+    extra_path = os.path.join(current_dir, extra_report_filename)
     prompt_path = os.path.normpath(
         os.path.join(current_dir, "..", "references", "system_prompt.md")
     )
 
-    # 0.5 RPA 环境预检
-    rpa, feishu, feishu_enabled = await rpa_health_check()
-    if rpa is None and config.get("wecom.form_url"):
-        return
-
-    from feishu_sender import FeishuSender
-
-    feishu = FeishuSender()
-    feishu_enabled = (
-        all([feishu.app_id, feishu.app_secret, feishu.target_chat_id])
-        and "xxx" not in feishu.app_id
-    )
-
     # 1. 采集数据
-    commits, fake_items, feishu_extra = await collect_data(config.gitlab_repos)
+    commits, fake_items, feishu_extra = await collect_data(
+        config.gitlab_repos, camouflage_enabled=camouflage_enabled
+    )
 
     # 2. AI 润色
     report_items = await polish_report(
@@ -313,31 +235,36 @@ async def run_daily_bot():
 
     if not report_items:
         log.warning("⚠️ 提示: 没有生成任何日报条目，终止后续流程。")
-        # if rpa: await rpa.close()
         return
 
     print_polished_report(report_items)
 
-    # 3. 飞书推送
-    feishu, feishu_enabled = await send_to_feishu(
-        report_items, fake_items, feishu=feishu
-    )
+    # 3. 飞书推送（默认关闭，需 --feishu 或 DAILYBOT_FEISHU_ENABLED=true 才会推送）
+    if feishu_push_enabled:
+        await send_to_feishu(report_items, fake_items)
+    else:
+        log.info(
+            "ℹ️ [飞书] 推送已禁用（使用 --feishu 或 DAILYBOT_FEISHU_ENABLED=true 可开启）"
+        )
 
-    # 4. 企业微信表单推送 (已禁用直接提交)
-    # send_wecom_report(report_items)
-
-    # 4. 企业微信 RPA
-    await fill_rpa(report_items, feishu, feishu_enabled, rpa=rpa)
+    # 4. 根据模式推送企业微信
+    if mode == "push":
+        log.info("\n🚀 [一键推送] 正在直接推送至企业微信...")
+        send_wecom_report(report_items)
+    else:
+        log.info(f"\n🤖 [RPA 模式] 当前模式: {mode}")
+        await fill_rpa(report_items, feishu=None, feishu_enabled=False, rpa=None)
 
 
 if __name__ == "__main__":
+    parser = build_parser()
+    args = parser.parse_args()
     try:
-        asyncio.run(run_daily_bot())
+        asyncio.run(run_daily_bot(args))
     except KeyboardInterrupt:
         log.warning("\n👋 用户终止运行。")
     except Exception as e:
         err_msg = str(e)
-        # 再次拦截可能冒泡到顶层的浏览器关闭错误
         if "Target page, context or browser has been closed" in err_msg:
             log.info("\n👋 任务已由用户手动关闭窗口结束。")
         else:
